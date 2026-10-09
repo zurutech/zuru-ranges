@@ -1,0 +1,39 @@
+name: apple-clang
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'include/**'
+      - 'test/**'
+      - 'cmake/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/apple-clang.yml'
+  pull_request:
+    paths:
+      - 'include/**'
+      - 'test/**'
+      - 'cmake/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/apple-clang.yml'
+  workflow_dispatch:
+
+jobs:
+  apple-clang:
+    name: Apple Clang (Xcode ${{ matrix.target.xcode || 'default' }}) ${{ matrix.config }}
+    runs-on: ${{ matrix.target.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config: [Debug, Release]
+        target:
+          # floor: Apple Clang 15 (Xcode 15.x; UE 5.5 requires 15.2). Xcode 14's libc++ has no <ranges>.
+          - {os: macos-14, xcode: '15.4'}
+          - {os: macos-latest}
+    steps:
+      - uses: actions/checkout@v4
+      - if: matrix.target.xcode
+        run: sudo xcode-select -s /Applications/Xcode_${{ matrix.target.xcode }}.app
+      - run: brew install ninja
+      - run: /usr/bin/clang++ --version
+      - run: scripts/make.sh -c /usr/bin/clang++ -W --config ${{ matrix.config }}

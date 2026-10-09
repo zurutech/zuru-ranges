@@ -1,0 +1,13 @@
+# find_package(zuru-ranges): the header-only target zuru-ranges::zuru-ranges, and zr_add_modules() over the
+# installed module interface units (`import zr;`).
+
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/zuru-rangesTargets.cmake")
+
+set(_zr_module_dir "@PACKAGE_ZR_INSTALL_MODULEDIR@")
+include("${CMAKE_CURRENT_LIST_DIR}/zr_modules.cmake")
+unset(_zr_module_dir)
+get_property(ZR_MODULE_SOURCES GLOBAL PROPERTY ZR_MODULE_SOURCES)
+
+check_required_components(zuru-ranges)

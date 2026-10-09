@@ -1,0 +1,35 @@
+name: module-gcc
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'include/**'
+      - 'modules/**'
+      - 'test/**'
+      - 'cmake/**'
+      - 'CMakeLists.txt'
+      - 'scripts/make.sh'
+      - '.github/workflows/module-gcc.yml'
+  pull_request:
+    paths:
+      - 'include/**'
+      - 'modules/**'
+      - 'test/**'
+      - 'cmake/**'
+      - 'CMakeLists.txt'
+      - 'scripts/make.sh'
+      - '.github/workflows/module-gcc.yml'
+  workflow_dispatch:
+
+jobs:
+  module-gcc:
+    name: g++-16 (import zr)
+    runs-on: ubuntu-latest
+    # GCC compiles `import zr;` from 16 on (14: exported namespace alias; 15: construct_at
+    # inside the module); ubuntu-latest ships 14, so use the official image.
+    container: gcc:16
+    steps:
+      - uses: actions/checkout@v4
+      - run: apt-get update && apt-get install -y --no-install-recommends cmake ninja-build
+      - run: scripts/make.sh -c g++ -W -m

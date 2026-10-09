@@ -1,0 +1,44 @@
+name: gcc
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'include/**'
+      - 'test/**'
+      - 'cmake/**'
+      - 'ci/**'
+      - 'CMakeLists.txt'
+      - 'scripts/make.sh'
+      - '.github/workflows/gcc.yml'
+  pull_request:
+    paths:
+      - 'include/**'
+      - 'test/**'
+      - 'cmake/**'
+      - 'ci/**'
+      - 'CMakeLists.txt'
+      - 'scripts/make.sh'
+      - '.github/workflows/gcc.yml'
+  workflow_dispatch:
+
+jobs:
+  gcc:
+    name: g++-${{ matrix.gcc }} C++${{ matrix.std }} ${{ matrix.config }}${{ matrix.hardened && ' hardened' || '' }}
+    runs-on: ubuntu-latest
+    container: gcc:${{ matrix.gcc }}
+    strategy:
+      fail-fast: false
+      matrix:
+        gcc: [11, 12, 13, 14, 15, 16]
+        std: [20]
+        config: [Debug]
+        include:
+          - {gcc: 11, std: 20, config: Release}
+          - {gcc: 16, std: 20, config: Release}
+          - {gcc: 16, std: 20, config: Release, hardened: '-H'}
+          - {gcc: 16, std: 23, config: Debug}
+    steps:
+      - uses: actions/checkout@v4
+      - run: ci/install-cmake-ninja.sh
+      - run: scripts/make.sh -c g++ -W --std ${{ matrix.std }} --config ${{ matrix.config }} ${{ matrix.hardened }}

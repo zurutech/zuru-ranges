@@ -1,0 +1,14 @@
+---
+# Config for cmake-lint (cmakelang), consumed via the cmake-lint pre-commit hook.
+# cmake-format's auto-layout is NOT run; this only declares the project's hand
+# layout so the linter flags structural problems (bad signatures, undefined vars)
+# instead of style noise. The CMake files use 4-space indentation and lines wider
+# than cmake-lint's 80-column default.
+format:
+  tab_size: 4
+  line_width: 120
+lint:
+  # C0103 enforces an uppercase naming convention. Disabled: the suite uses
+  # GoogleTest's own lowercase cache var (gtest_force_shared_crt) and conventional
+  # lowercase foreach loop variables, neither of which is a real problem.
+  disabled_codes: [C0103]

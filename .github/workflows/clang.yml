@@ -1,0 +1,63 @@
+name: clang
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'include/**'
+      - 'test/**'
+      - 'cmake/**'
+      - 'ci/**'
+      - 'CMakeLists.txt'
+      - 'scripts/make.sh'
+      - '.github/workflows/clang.yml'
+  pull_request:
+    paths:
+      - 'include/**'
+      - 'test/**'
+      - 'cmake/**'
+      - 'ci/**'
+      - 'CMakeLists.txt'
+      - 'scripts/make.sh'
+      - '.github/workflows/clang.yml'
+  workflow_dispatch:
+
+jobs:
+  clang:
+    name: >-
+      clang++-${{ matrix.clang }} ${{ matrix.stdlib }} C++${{ matrix.std }}
+      ${{ matrix.config }}${{ matrix.hardened && ' hardened' || '' }}
+    runs-on: ubuntu-latest
+    # Ubuntu 22.04 carries clang 13-15, 24.04 the rest (or apt.llvm.org).
+    container: ubuntu:${{ matrix.clang < 16 && '22.04' || '24.04' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        clang: [16, 17, 18, 19, 20, 21, 22, 23]
+        stdlib: [libstdc++, libc++]
+        std: [20]
+        config: [Debug]
+        # libc++ 15: UE 5.3-5.5's Linux libc++ (adaptors experimental: no std interop tests).
+        include:
+          - {clang: 13, stdlib: libstdc++, std: 20, config: Debug}
+          - {clang: 14, stdlib: libstdc++, std: 20, config: Debug}
+          - {clang: 15, stdlib: libstdc++, std: 20, config: Debug}
+          - {clang: 13, stdlib: libstdc++, std: 20, config: Release}
+          - {clang: 15, stdlib: libc++, std: 20, config: Debug}
+          - {clang: 15, stdlib: libc++, std: 20, config: Release}
+          # clang 16/18/20: UE's Linux compilers (5.3-5.4/5.5-5.6/5.7).
+          - {clang: 16, stdlib: libc++, std: 20, config: Release}
+          - {clang: 18, stdlib: libc++, std: 20, config: Release}
+          - {clang: 20, stdlib: libc++, std: 20, config: Release}
+          - {clang: 23, stdlib: libc++, std: 20, config: Release}
+          - {clang: 23, stdlib: libstdc++, std: 20, config: Release}
+          - {clang: 23, stdlib: libc++, std: 20, config: Release, hardened: '-H'}
+          - {clang: 23, stdlib: libc++, std: 23, config: Debug}
+    steps:
+      - uses: actions/checkout@v4
+      - run: ci/install-clang.sh ${{ matrix.clang }}
+      - run: >-
+          scripts/make.sh -c clang++-${{ matrix.clang }} -W --std ${{ matrix.std }} --config ${{ matrix.config }}
+          $STDLIB_FLAG ${{ matrix.hardened }}
+        env:
+          STDLIB_FLAG: ${{ matrix.stdlib == 'libc++' && '--libcxx' || '' }}

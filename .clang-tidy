@@ -1,0 +1,77 @@
+---
+# clang-tidy configuration for zr::ranges; compiler warnings are in cmake/zr_flags.cmake.
+# Enabled groups, from a clean -* slate: bugprone, cppcoreguidelines, modernize, performance,
+# readability, misc, portability, concurrency, clang-analyzer.
+#
+# readability-identifier-naming is off: a trailing underscore marks an implementation detail
+# (value_, invoke_) for data and helper functions regardless of access, and local type aliases
+# are CamelCase (`using V = ...`); the check keys rules off access and one case per category.
+#
+# google-explicit-constructor is off: the standard leaves some view constructors implicit
+# (ref_view's converting constructor, owning_view, subrange).
+# cppcoreguidelines-missing-std-forward is on. The CPOs (range_access.h, const_access.h) and the
+# range overloads of the algorithms and of distance take a forwarding reference only to gate
+# borrowing and use it as an lvalue, as ranges::begin does; each such site carries a NOLINT.
+#
+# Disabled checks:
+#   *-avoid-magic-numbers / *-magic-numbers            not actionable here.
+#   *-pro-bounds-pointer-arithmetic                    iterators ARE pointer arithmetic.
+#   *-pro-bounds-array-to-pointer-decay                C arrays are valid ranges; they decay.
+#   *-pro-bounds-constant-array-index                  same; indexing built-in arrays is intended.
+#   *-pro-type-reinterpret-cast                        low-level iterator/storage plumbing.
+#   *-pro-type-static-cast-downcast                    view_interface is CRTP; it downcasts to Derived.
+#   *-avoid-c-arrays / modernize-avoid-c-arrays        the library must accept C arrays as ranges.
+#   cppcoreguidelines-macro-usage                      attribute and ABI-namespace macros (config.h).
+#   *-pro-bounds-avoid-unchecked-container-access      operator[] is the intended random-access interface.
+#   readability-use-concise-preprocessor-directives    feature-test #if defined(...) blocks are written out by choice.
+#   bugprone-easily-swappable-parameters               every (first, last) / (Iter, Sentinel) pair trips it.
+#   misc-include-cleaner                               umbrella headers (ranges.h) intentionally re-export.
+#   misc-non-private-member-variables-in-classes       function-object/aggregate views have public members.
+#   misc-use-internal-linkage                          header-only: helpers are inline, not static.
+#   modernize-use-trailing-return-type                 the library uses leading return types like <ranges>.
+#   modernize-use-nodiscard, modernize-use-designated-initializers   not in the standard's interface.
+#   performance-enum-size                              range_category's size is irrelevant.
+#   portability-avoid-pragma-once                      the library uses #pragma once by choice.
+#   readability-identifier-length                      single-letter template params (T, R, F) are idiomatic.
+#   readability-identifier-naming                      can't model zr's naming; see the note above.
+#   readability-named-parameter                        unnamed params are common in generic overloads.
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  cppcoreguidelines-*,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-avoid-c-arrays,
+  -cppcoreguidelines-macro-usage,
+  -cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+  -cppcoreguidelines-pro-bounds-constant-array-index,
+  -cppcoreguidelines-pro-type-reinterpret-cast,
+  -cppcoreguidelines-pro-type-static-cast-downcast,
+  clang-analyzer-*,
+  concurrency-*,
+  google-global-names-in-headers,
+  misc-*,
+  -misc-include-cleaner,
+  -misc-non-private-member-variables-in-classes,
+  -misc-use-internal-linkage,
+  modernize-*,
+  -modernize-avoid-c-arrays,
+  -modernize-use-trailing-return-type,
+  -modernize-use-nodiscard,
+  -modernize-use-designated-initializers,
+  performance-*,
+  -performance-enum-size,
+  portability-*,
+  -portability-avoid-pragma-once,
+  readability-*,
+  -readability-magic-numbers,
+  -readability-identifier-length,
+  -readability-identifier-naming,
+  -readability-named-parameter,
+  -readability-use-concise-preprocessor-directives
+
+WarningsAsErrors: ''
+# The library's headers only, not test/fake-unreal/ (UE naming).
+HeaderFilterRegex: 'include/zr/'

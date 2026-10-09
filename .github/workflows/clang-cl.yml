@@ -1,0 +1,55 @@
+name: clang-cl
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'include/**'
+      - 'test/**'
+      - 'cmake/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/clang-cl.yml'
+  pull_request:
+    paths:
+      - 'include/**'
+      - 'test/**'
+      - 'cmake/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/clang-cl.yml'
+  workflow_dispatch:
+
+jobs:
+  clang-cl:
+    name: clang-cl ${{ matrix.target.llvm || 'newest' }} ${{ matrix.config }}
+    runs-on: ${{ matrix.target.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config: [Debug, Release]
+        target:
+          # floor: clang-cl 13 (UE 5.3) on the MSVC 14.29 STL, the newest that accepts it
+          - {os: windows-2022, toolset: '14.29', llvm: '13.0.1'}
+          # newest: the image's LLVM on its newest STL
+          - {os: windows-2025-vs2026}
+    steps:
+      - uses: actions/checkout@v4
+      # The VS 2019 toolset is an optional component of the VS 2022 image.
+      - if: matrix.target.toolset == '14.29'
+        shell: pwsh
+        run: |
+          $installer = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer"
+          $vs = & "$installer\vswhere.exe" -latest -property installationPath
+          Start-Process -Wait -NoNewWindow -FilePath "$installer\vs_installer.exe" -ArgumentList `
+            "modify", "--installPath", "`"$vs`"", "--add", "Microsoft.VisualStudio.Component.VC.14.29.16.11.x86.x64", `
+            "--quiet", "--norestart", "--nocache"
+      - if: matrix.target.llvm
+        run: choco install llvm --version=${{ matrix.target.llvm }} --allow-downgrade -y --no-progress
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          toolset: ${{ matrix.target.toolset }}
+      - run: >-
+          cmake -S . -B build -G Ninja -DCMAKE_C_COMPILER="C:/Program Files/LLVM/bin/clang-cl.exe"
+          -DCMAKE_CXX_COMPILER="C:/Program Files/LLVM/bin/clang-cl.exe" -DZR_WARNINGS_AS_ERRORS=ON
+          -DCMAKE_BUILD_TYPE=${{ matrix.config }}
+      - run: cmake --build build
+      - run: ctest --test-dir build --output-on-failure -j 4

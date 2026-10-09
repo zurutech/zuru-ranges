@@ -1,0 +1,64 @@
+---
+# pre-commit configuration for zr::ranges.
+#
+# Hooks for a header-only C++20 library with CMake tests, shell scripts and GitHub Actions; no
+# Python, JSON, proto or C# sources. clang-format is
+# deliberately omitted (see below).
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-merge-conflict
+      - id: check-added-large-files
+      - id: check-yaml  # CI workflow + this config
+      - id: fix-byte-order-marker
+        files: '^.*\.(h|hpp|c|cpp|cmake|sh|yml|yaml|md|txt)$'
+      - id: trailing-whitespace
+        files: '^.*\.(h|hpp|c|cpp|cmake|sh|yml|yaml|md|txt)$'
+      - id: end-of-file-fixer
+        files: '^.*\.(h|hpp|c|cpp|cmake|sh|yml|yaml|md|txt)$'
+
+  - repo: https://github.com/lucas-c/pre-commit-hooks
+    rev: v1.5.6
+    hooks:
+      # The codebase is space-indented; normalise any stray tabs in C++/CMake.
+      - id: remove-tabs
+        name: Tabs to 4 Spaces (Code)
+        args: [--whitespaces-count, '4']
+        files: '(\.(h|hpp|c|cpp|cmake)|CMakeLists\.txt)$'
+
+  # clang-format is intentionally NOT run. The library is hand-formatted with a
+  # deliberate layout (aligned view pipelines, `// DEVIATION` annotations that
+  # mirror the standard's structure) and the repo ships no .clang-format, so the
+  # tool would reformat to default LLVM style and destroy that intent. Style is
+  # reviewed by eye; .clang-tidy still covers correctness/bugprone checks.
+
+  # cmake-lint catches structural issues (bad signatures, undefined vars) without
+  # reformatting. cmake-format's auto-layout is omitted for the same hand-format
+  # reasons as clang-format above; .cmake-format.yaml only tells the linter the
+  # project's layout (4-space indent, wider lines) so it reports structure, not style.
+  - repo: https://github.com/cheshirekow/cmake-format-precommit
+    rev: v0.6.13
+    hooks:
+      - id: cmake-lint
+        additional_dependencies: [pyyaml]
+
+  # The only script in the repo is scripts/make.sh; lint it. shellcheck-py is the
+  # pip-packaged hook (no Docker needed, version pinned for reproducibility).
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.38.0
+    hooks:
+      - id: yamllint
+        # Config inlined to keep this a single drop-in file. document-start is
+        # disabled because the GitHub Actions workflows omit the leading "---".
+        args:
+          - "-f=colored"
+          - "-d=\
+            {extends: default, rules: {line-length: {max: 120}, \
+            document-start: disable, truthy: {check-keys: false}}}"

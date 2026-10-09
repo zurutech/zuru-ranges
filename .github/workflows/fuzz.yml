@@ -1,0 +1,30 @@
+name: fuzz
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'include/**'
+      - 'test/**'
+      - 'cmake/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/fuzz.yml'
+  pull_request:
+    paths:
+      - 'include/**'
+      - 'test/**'
+      - 'cmake/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/fuzz.yml'
+  workflow_dispatch:
+
+jobs:
+  fuzz:
+    name: clang + libFuzzer (smoke)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y cmake ninja-build
+      - run: cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DZR_BUILD_FUZZERS=ON
+      - run: cmake --build build
+      - run: ctest --test-dir build --output-on-failure -R concat_fuzzer_smoke

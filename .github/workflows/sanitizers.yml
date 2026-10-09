@@ -1,0 +1,30 @@
+name: sanitizers
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'include/**'
+      - 'test/**'
+      - 'cmake/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/sanitizers.yml'
+  pull_request:
+    paths:
+      - 'include/**'
+      - 'test/**'
+      - 'cmake/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/sanitizers.yml'
+  workflow_dispatch:
+
+jobs:
+  sanitizers:
+    name: clang + ASan/UBSan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y cmake ninja-build
+      - run: cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DZR_ENABLE_SANITIZERS=ON
+      - run: cmake --build build
+      - run: ctest --test-dir build --output-on-failure

@@ -1,0 +1,33 @@
+name: module-clang
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'include/**'
+      - 'modules/**'
+      - 'test/**'
+      - 'cmake/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/module-clang.yml'
+  pull_request:
+    paths:
+      - 'include/**'
+      - 'modules/**'
+      - 'test/**'
+      - 'cmake/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/module-clang.yml'
+  workflow_dispatch:
+
+jobs:
+  module-clang:
+    name: clang++ (import zr)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # clang-tools: clang-scan-deps, which CMake needs to scan module dependencies
+      - run: sudo apt-get update && sudo apt-get install -y cmake ninja-build clang-tools
+      - run: cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DZR_MODULE=ON -DZR_WARNINGS_AS_ERRORS=ON
+      - run: cmake --build build --target zr_module_smoke
+      - run: ctest --test-dir build --output-on-failure -R zr_module_smoke
