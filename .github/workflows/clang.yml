@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'include/**'
+      - 'modules/**'
       - 'test/**'
       - 'cmake/**'
       - 'ci/**'
@@ -14,6 +15,7 @@ on:
   pull_request:
     paths:
       - 'include/**'
+      - 'modules/**'
       - 'test/**'
       - 'cmake/**'
       - 'ci/**'
@@ -21,15 +23,21 @@ on:
       - 'scripts/make.sh'
       - '.github/workflows/clang.yml'
   workflow_dispatch:
+  # Weekly, so the rows that float with the runner images and package archives ("newest",
+  # apt.llvm.org, gcc:N) are rebuilt without a push.
+  schedule:
+    - cron: '0 4 * * 1'
 
 jobs:
   clang:
     name: >-
-      clang++-${{ matrix.clang }} ${{ matrix.stdlib }} C++${{ matrix.std }}
+      clang++-${{ matrix.clang }} ${{ matrix.stdlib }}${{ matrix.libcxx && format(' {0}', matrix.libcxx) || '' }}
+      C++${{ matrix.std }}
       ${{ matrix.config }}${{ matrix.hardened && ' hardened' || '' }}
     runs-on: ubuntu-latest
-    # Ubuntu 22.04 carries clang 13-15, 24.04 the rest (or apt.llvm.org).
-    container: ubuntu:${{ matrix.clang < 16 && '22.04' || '24.04' }}
+    # Ubuntu 22.04 carries clang 13-15 and libc++ 15, 24.04 clang 16-20 and libc++ 19; newer
+    # from apt.llvm.org.
+    container: ubuntu:${{ (matrix.clang < 16 || matrix.libcxx == 15) && '22.04' || '24.04' }}
     strategy:
       fail-fast: false
       matrix:
@@ -37,7 +45,10 @@ jobs:
         stdlib: [libstdc++, libc++]
         std: [20]
         config: [Debug]
-        # libc++ 15: UE 5.3-5.5's Linux libc++ (adaptors experimental: no std interop tests).
+        # UE on Linux: 5.3/5.4 clang 16 and 5.5 clang 18 over the engine's libc++ 15 (libcxx:
+        # that LLVM's libc++ under a newer clang), 5.6 clang 18 over its own libc++ 18 (or the
+        # engine's 19 with -ForceUseLegacyLibCxx), 5.7 clang 20 over its own. libc++ 15 ships
+        # the std adaptors as experimental: no std interop tests.
         include:
           - {clang: 13, stdlib: libstdc++, std: 20, config: Debug}
           - {clang: 14, stdlib: libstdc++, std: 20, config: Debug}
@@ -45,7 +56,9 @@ jobs:
           - {clang: 13, stdlib: libstdc++, std: 20, config: Release}
           - {clang: 15, stdlib: libc++, std: 20, config: Debug}
           - {clang: 15, stdlib: libc++, std: 20, config: Release}
-          # clang 16/18/20: UE's Linux compilers (5.3-5.4/5.5-5.6/5.7).
+          - {clang: 16, stdlib: libc++, libcxx: 15, std: 20, config: Release}
+          - {clang: 18, stdlib: libc++, libcxx: 15, std: 20, config: Release}
+          - {clang: 18, stdlib: libc++, libcxx: 19, std: 20, config: Release}
           - {clang: 16, stdlib: libc++, std: 20, config: Release}
           - {clang: 18, stdlib: libc++, std: 20, config: Release}
           - {clang: 20, stdlib: libc++, std: 20, config: Release}
@@ -56,8 +69,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: ci/install-clang.sh ${{ matrix.clang }}
+      - if: matrix.libcxx
+        run: >-
+          apt-get install -y -qq --no-install-recommends
+          libc++-${{ matrix.libcxx }}-dev libc++abi-${{ matrix.libcxx }}-dev
       - run: >-
           scripts/make.sh -c clang++-${{ matrix.clang }} -W --std ${{ matrix.std }} --config ${{ matrix.config }}
-          $STDLIB_FLAG ${{ matrix.hardened }}
+          $STDLIB_FLAG $LIBCXX_ROOT ${{ matrix.hardened }}
         env:
           STDLIB_FLAG: ${{ matrix.stdlib == 'libc++' && '--libcxx' || '' }}
+          LIBCXX_ROOT: ${{ matrix.libcxx && format('--libcxx-root /usr/lib/llvm-{0}', matrix.libcxx) || '' }}

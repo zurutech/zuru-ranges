@@ -11,7 +11,7 @@
 // Release version; equals project(VERSION) in CMakeLists.txt (checked by the test build).
 #define ZR_VERSION_MAJOR 0
 #define ZR_VERSION_MINOR 1
-#define ZR_VERSION_PATCH 0
+#define ZR_VERSION_PATCH 1
 
 // ABI namespace: every entity is declared in `inline namespace ZR_ABI_NAMESPACE` nested in
 // zr::ranges and zr::ranges::views, so binaries built against releases with different ABIs

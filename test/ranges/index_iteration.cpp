@@ -21,6 +21,15 @@
 
 #include <gtest/gtest.h>
 
+// The MSVC STL after 14.29 and before 14.37 specializes basic_common_reference for tuple
+// (P2321R2) without the tuple(tuple<U...>&) constructor, so no tuple-of-references iterator is
+// std::indirectly_readable there (see std_interop.cpp).
+#if defined(_MSVC_STL_UPDATE) && _MSVC_STL_UPDATE > 202105L && _MSVC_STL_UPDATE < 202305L
+#define ZR_TEST_STD_TUPLE_PROXIES 0
+#else
+#define ZR_TEST_STD_TUPLE_PROXIES 1
+#endif
+
 using namespace zr::ranges;
 
 namespace {
@@ -100,7 +109,10 @@ static_assert(!detail::index_iterable<std::vector<int>> && !detail::index_iterab
 // The views' iterators are std random-access iterators in both configurations (T*, or the index
 // iterator), and the views random access, sized and common; take over TArray stays contiguous.
 static_assert(std::random_access_iterator<iterator_t<arr_take>> && std::random_access_iterator<iterator_t<deque_take>>);
-static_assert(std::random_access_iterator<iterator_t<zip_arrays>> && std::random_access_iterator<iterator_t<deque_rev>>);
+#if ZR_TEST_STD_TUPLE_PROXIES
+static_assert(std::random_access_iterator<iterator_t<zip_arrays>>);
+#endif
+static_assert(std::random_access_iterator<iterator_t<deque_rev>>);
 static_assert(contiguous_range<arr_take> && sized_range<arr_take> && common_range<arr_take>);
 static_assert(contiguous_range<const arr_take> && common_range<const arr_take>);
 static_assert(random_access_range<deque_take> && sized_range<deque_take> && common_range<deque_take> && common_range<const deque_take>);

@@ -61,7 +61,9 @@ recurring ones:
 Conformance is tested: `test/ranges/conformance.cpp` has a test per individually checked
 requirement, `test/ranges/std_interop.cpp` checks the std concepts and
 std adaptors and algorithms over zr views, and `test/compile/` holds the static classification
-checks. All run in both Unreal build configurations on GCC, Clang (libstdc++, libc++), Apple Clang, MSVC and clang-cl.
+checks. All run in the three Unreal configurations (see [Building the tests](#building-the-tests))
+on GCC, Clang (libstdc++, libc++), Apple Clang, MSVC and clang-cl; `std_interop.cpp` only where
+the std adaptors are usable (not on Clang before 16 without libc++, nor on libc++ 15).
 
 A few components are not part of the standard:
 
@@ -303,7 +305,7 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
-Or `scripts/make.sh`, which the GCC, Clang, Apple Clang and module-gcc workflows run (`-h` lists the options):
+Or `scripts/make.sh`, which every Linux and macOS workflow runs (`-h` lists the options):
 
 ```sh
 scripts/make.sh -c clang++ -W        # warnings as errors
@@ -321,8 +323,10 @@ Compile-time checks (`static_assert`) are in `test/compile/`, built but not run;
 are in `test/ranges/`, `test/iterator/` and `test/algorithm/` (GoogleTest); every header is
 also compiled on its own. Each test is built three times: against the raw-pointer (shipping)
 and the checked-class (debug, `ZR_FAKE_UE_RANGED_FOR_CHECKS`) Unreal iterator, and debug
-against the UE 5.3 mocks (`ZR_FAKE_UE_VERSION=503`, `test/fake-unreal/README.md`). CI covers the matrix in [Requirements](#requirements), plus C++23,
-ASan/UBSan, libFuzzer and module mode (`.github/workflows`).
+against the UE 5.3 mocks (`ZR_FAKE_UE_VERSION=503`, `test/fake-unreal/README.md`). CI covers
+the matrix in [Requirements](#requirements), plus C++23, ASan/UBSan (Clang 20 with libc++, GCC 16),
+libFuzzer (Clang 20), module mode, the CMake 3.21 floor, and consumers through
+`find_package` and `FetchContent` (`.github/workflows`).
 
 ## Requirements
 
@@ -331,20 +335,23 @@ C++20, and a standard library with `<ranges>`.
 ### Compilers and standard libraries
 
 The floor of each family is the oldest version that needs no workaround of substance. CI
-builds every major between the floor and the newest, warnings as errors, each test both with
-UE's shipping (raw pointer) and debug (checked) iterators.
+builds every GCC and Linux Clang major between the floor and the newest; of MSVC, clang-cl and
+Apple Clang the floor, the versions UE requires and the newest the runner image ships (CI also
+runs weekly, so the floating versions are rebuilt without a push). All with
+warnings as errors, in strict `-std=c++20` as UBT compiles (not `gnu++20`), each test in the
+three Unreal configurations.
 
 | Compiler | Standard library | Versions | Configurations in CI |
 |---|---|---|---|
 | GCC | libstdc++ | 11 to 16 | Debug: all; Release: 11, 16; `_GLIBCXX_ASSERTIONS`: 16 |
 | Clang | libstdc++ | 13 to 23 | Debug: all; Release: 13, 23 |
-| Clang | libc++ | 15 to 23 | Debug: all; Release: 15, 16, 18, 20, 23; hardened (debug mode): 23 |
-| MSVC | MSVC STL | 14.29 (VS 2019 16.11), 14.44, newest | Debug and Release |
-| clang-cl | MSVC STL | 13 (STL 14.29), newest | Debug and Release |
-| Apple Clang | Apple libc++ | 15 (Xcode 15.4), newest | Debug and Release |
+| Clang | libc++ | 15 to 23 | Debug: all; Release: 15, 16, 18, 20, 23, 16 and 18 over libc++ 15, 18 over libc++ 19; hardened (debug mode): 23 |
+| MSVC | MSVC STL | 14.29 (VS 2019 16.11), 14.34, 14.38, 14.44, newest | Debug and Release |
+| clang-cl | MSVC STL | 13 (STL 14.29), 15 (STL 14.34), 16 and 18 (STL 14.38), newest | Debug and Release |
+| Apple Clang | Apple libc++ | 15 (Xcode 15.0, 15.2), 16 (Xcode 16.4), newest | Debug and Release |
 
-C++23 is built with GCC 16 and Clang 23 (libc++); `import zr;` with Clang 20 and GCC 16
-(GCC 14 and 15 reject it; CMake 3.28+). libc++ 14 and Xcode 14 have no `std::ranges` at all.
+C++23 is built with GCC 16 and Clang 23 (libc++); `import zr;` with Clang 18 (libstdc++), Clang
+20 and 23 (libc++) and GCC 16 (GCC 14 and 15 reject it; CMake 3.28+). libc++ 14 and Xcode 14 have no `std::ranges` at all.
 
 Every view, `subrange` and `ranges::to` are usable in constant expressions
 (`test/compile/constexpr_checks.cpp`). `concat` needs a constexpr `std::variant` (P2231R1:
@@ -374,12 +381,15 @@ installed Xcode, so the library's minimum can be above UE's.
 | UE | Windows (UBT minimum) | Linux (UBT toolchain) | macOS (UBT range) |
 |---|---|---|---|
 | 5.7 | MSVC 14.38, clang-cl 18.1.8 | clang 20.1.8, its libc++ 20 | Xcode 15.2 to 26 |
-| 5.6 | MSVC 14.38, clang-cl 18.1.3 | clang 18.1.0, bundled libc++ 19 | Xcode 15.2 to 26 |
+| 5.6 | MSVC 14.38, clang-cl 18.1.3 | clang 18.1.0, its libc++ 18 (bundled 19 with `-ForceUseLegacyLibCxx`) | Xcode 15.2 to 26 |
 | 5.5 | MSVC 14.38, clang-cl 16 | clang 18.1.0, bundled libc++ 15 | Xcode 15.2 to 16 |
 | 5.4 | MSVC 14.34, clang-cl 15 | clang 16.0.6, bundled libc++ 15 | Xcode 15 to 15.9 (UE: from 14.1) |
 | 5.3 | MSVC 14.29, clang-cl 13 | clang 16, bundled libc++ 15 | Xcode 15 (UE: from 14.1) |
 
 Every cell is supported, with the library's own Xcode 15 minimum on 5.3 and 5.4. It uses nothing
-from the standard library that libc++ 15 leaves experimental. Validated beyond the fakes
-against the real engine sources of 5.3 to 5.7, and on Linux against each version's bundled
-libc++ (local, never published).
+from the standard library that libc++ 15 leaves experimental. CI builds the UE toolchains: on
+Linux clang 16 and 18 over libc++ 15 (5.3 to 5.5), clang 18 over libc++ 18 and 19 (5.6), clang
+20 over libc++ 20 (5.7); on Windows each version's UBT minimum MSVC, and clang-cl 13, 15, 16 and
+18 on it; on macOS Xcode 15.0, 15.2, 16.4 and the newest. Validated beyond the fakes against the real engine
+sources of 5.3 to 5.7, and on Linux against each version's bundled libc++ (local, never
+published).

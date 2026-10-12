@@ -5,18 +5,26 @@ on:
     branches: [main]
     paths:
       - 'include/**'
+      - 'modules/**'
       - 'test/**'
       - 'cmake/**'
       - 'CMakeLists.txt'
+      - 'scripts/make.sh'
       - '.github/workflows/apple-clang.yml'
   pull_request:
     paths:
       - 'include/**'
+      - 'modules/**'
       - 'test/**'
       - 'cmake/**'
       - 'CMakeLists.txt'
+      - 'scripts/make.sh'
       - '.github/workflows/apple-clang.yml'
   workflow_dispatch:
+  # Weekly, so the rows that float with the runner images and package archives ("newest",
+  # apt.llvm.org, gcc:N) are rebuilt without a push.
+  schedule:
+    - cron: '0 4 * * 1'
 
 jobs:
   apple-clang:
@@ -27,8 +35,12 @@ jobs:
       matrix:
         config: [Debug, Release]
         target:
-          # floor: Apple Clang 15 (Xcode 15.x; UE 5.5 requires 15.2). Xcode 14's libc++ has no <ranges>.
-          - {os: macos-14, xcode: '15.4'}
+          # floor: Xcode 15.0, the library's (UE 5.3/5.4 accept Xcode 14.1, whose libc++ has no
+          # <ranges>); 15.2, UE 5.5's minimum
+          - {os: macos-14, xcode: '15.0'}
+          - {os: macos-14, xcode: '15.2'}
+          # UE 5.5's newest
+          - {os: macos-15, xcode: '16.4'}
           - {os: macos-latest}
     steps:
       - uses: actions/checkout@v4

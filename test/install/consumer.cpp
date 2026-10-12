@@ -1,4 +1,4 @@
-// Header consumer of an installed zr (find_package(zuru-ranges), zuru-ranges::zuru-ranges).
+// Header consumer of zr (find_package(zuru-ranges) or FetchContent, zuru-ranges::zuru-ranges).
 #include "zr/ranges.h"
 
 #include <vector>

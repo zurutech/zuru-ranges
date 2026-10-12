@@ -2,13 +2,17 @@
 
 cmake_minimum_required(VERSION 3.21...3.31)
 project(zuru-ranges
-    VERSION 0.1.0
+    VERSION 0.1.1
     DESCRIPTION "C++20 ranges for Unreal and standard containers"
     LANGUAGES CXX
 )
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+# UBT compiles with -std=c++20, not gnu++20: so do zr's own builds.
+if(PROJECT_IS_TOP_LEVEL AND NOT DEFINED CMAKE_CXX_EXTENSIONS)
+    set(CMAKE_CXX_EXTENSIONS OFF)
+endif()
 
 # ---------------------------------------------------------------------------------------
 # Options (tests default ON only when zr is the top-level project).
@@ -81,12 +85,16 @@ if(ZR_BUILD_TESTS)
     if(ZR_MODULE)
         add_executable(zr_module_smoke test/module_smoke.cpp test/module_mix_header.cpp)
         zr_add_modules(zr_module_smoke)
+        # zr_add_modules compiles the units with -w (a consumer's warning bar is not zr's);
+        # zr's own build holds them to zr's.
+        set_source_files_properties(${ZR_MODULE_SOURCES} TARGET_DIRECTORY zr_module_smoke
+            PROPERTIES COMPILE_OPTIONS "$<TARGET_PROPERTY:zr_flags,INTERFACE_COMPILE_OPTIONS>")
         add_test(NAME zr_module_smoke COMMAND zr_module_smoke)
     endif()
 
-    # Installed package: install this build into a fresh prefix and build test/install
-    # against it through find_package(zuru-ranges), with this build's toolchain; with ZR_MODULE
-    # also zr_add_modules() over the installed units.
+    # Consumers: install this build into a fresh prefix and build test/install against it
+    # through find_package(zuru-ranges), or against the source tree through FetchContent,
+    # with this build's toolchain; with ZR_MODULE also zr_add_modules() over the units.
     set(_zr_install_test_args
         -DBUILD_DIR=${CMAKE_BINARY_DIR}
         -DGENERATOR=${CMAKE_GENERATOR}
@@ -103,9 +111,17 @@ if(ZR_BUILD_TESTS)
     add_test(NAME zr_install_consumer COMMAND ${CMAKE_COMMAND} ${_zr_install_test_args}
         -DWORK_DIR=${CMAKE_BINARY_DIR}/install-test -DZR_MODULE=OFF
         -P ${CMAKE_CURRENT_SOURCE_DIR}/test/install/run.cmake)
+    add_test(NAME zr_subdirectory_consumer COMMAND ${CMAKE_COMMAND} ${_zr_install_test_args}
+        -DWORK_DIR=${CMAKE_BINARY_DIR}/subdirectory-test -DZR_MODULE=OFF
+        -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/test/install/run.cmake)
     if(ZR_MODULE)
         add_test(NAME zr_module_smoke_installed COMMAND ${CMAKE_COMMAND} ${_zr_install_test_args}
             -DWORK_DIR=${CMAKE_BINARY_DIR}/install-test-module -DZR_MODULE=ON
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/test/install/run.cmake)
+        add_test(NAME zr_module_smoke_subdirectory COMMAND ${CMAKE_COMMAND} ${_zr_install_test_args}
+            -DWORK_DIR=${CMAKE_BINARY_DIR}/subdirectory-test-module -DZR_MODULE=ON
+            -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
             -P ${CMAKE_CURRENT_SOURCE_DIR}/test/install/run.cmake)
     endif()
     unset(_zr_install_test_args)

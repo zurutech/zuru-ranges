@@ -8,7 +8,9 @@ on:
       - 'modules/**'
       - 'test/**'
       - 'cmake/**'
+      - 'ci/**'
       - 'CMakeLists.txt'
+      - 'scripts/make.sh'
       - '.github/workflows/module-clang.yml'
   pull_request:
     paths:
@@ -16,18 +18,34 @@ on:
       - 'modules/**'
       - 'test/**'
       - 'cmake/**'
+      - 'ci/**'
       - 'CMakeLists.txt'
+      - 'scripts/make.sh'
       - '.github/workflows/module-clang.yml'
   workflow_dispatch:
+  # Weekly, so the rows that float with the runner images and package archives ("newest",
+  # apt.llvm.org, gcc:N) are rebuilt without a push.
+  schedule:
+    - cron: '0 4 * * 1'
 
 jobs:
   module-clang:
-    name: clang++ (import zr)
+    name: clang++-${{ matrix.clang }} ${{ matrix.stdlib }} (import zr)
     runs-on: ubuntu-latest
+    container: ubuntu:24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {clang: 18, stdlib: libstdc++}
+          # UE 5.7's Linux toolchain
+          - {clang: 20, stdlib: libc++}
+          - {clang: 23, stdlib: libc++}
     steps:
       - uses: actions/checkout@v4
-      # clang-tools: clang-scan-deps, which CMake needs to scan module dependencies
-      - run: sudo apt-get update && sudo apt-get install -y cmake ninja-build clang-tools
-      - run: cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DZR_MODULE=ON -DZR_WARNINGS_AS_ERRORS=ON
-      - run: cmake --build build --target zr_module_smoke
-      - run: ctest --test-dir build --output-on-failure -R zr_module_smoke
+      - run: ci/install-clang.sh ${{ matrix.clang }}
+      # clang-scan-deps, which CMake needs to scan module dependencies
+      - run: apt-get install -y -qq --no-install-recommends clang-tools-${{ matrix.clang }}
+      - run: scripts/make.sh -c clang++-${{ matrix.clang }} -W -m $STDLIB_FLAG
+        env:
+          STDLIB_FLAG: ${{ matrix.stdlib == 'libc++' && '--libcxx' || '' }}

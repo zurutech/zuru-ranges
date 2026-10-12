@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'include/**'
+      - 'modules/**'
       - 'test/**'
       - 'cmake/**'
       - 'CMakeLists.txt'
@@ -12,11 +13,16 @@ on:
   pull_request:
     paths:
       - 'include/**'
+      - 'modules/**'
       - 'test/**'
       - 'cmake/**'
       - 'CMakeLists.txt'
       - '.github/workflows/msvc.yml'
   workflow_dispatch:
+  # Weekly, so the rows that float with the runner images and package archives ("newest",
+  # apt.llvm.org, gcc:N) are rebuilt without a push.
+  schedule:
+    - cron: '0 4 * * 1'
 
 jobs:
   msvc:
@@ -27,19 +33,27 @@ jobs:
       matrix:
         config: [Debug, Release]
         target:
-          - {os: windows-2022, toolset: '14.29'}  # floor: VS 2019 16.11, UE 5.3
-          - {os: windows-2022, toolset: '14.44'}  # UE 5.7
-          - {os: windows-2025-vs2026}  # newest
+          # floor: VS 2019 16.11, UE 5.3
+          - {os: windows-2022, toolset: '14.29', component: VC.14.29.16.11}
+          # UBT minimums: UE 5.4, UE 5.5 to 5.7
+          - {os: windows-2022, toolset: '14.34', component: VC.14.34.17.4}
+          - {os: windows-2022, toolset: '14.38', component: VC.14.38.17.8}
+          # VS 2022's newest
+          - {os: windows-2022, toolset: '14.44'}
+          # the image's newest
+          - {os: windows-2025-vs2026}
     steps:
       - uses: actions/checkout@v4
-      # The VS 2019 toolset is an optional component of the VS 2022 image.
-      - if: matrix.target.toolset == '14.29'
+      # Older toolsets (VS 2019's 14.29, VS 2022's earlier ones) are optional components of the
+      # VS 2022 image.
+      - if: matrix.target.component
         shell: pwsh
         run: |
           $installer = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer"
           $vs = & "$installer\vswhere.exe" -latest -property installationPath
           Start-Process -Wait -NoNewWindow -FilePath "$installer\vs_installer.exe" -ArgumentList `
-            "modify", "--installPath", "`"$vs`"", "--add", "Microsoft.VisualStudio.Component.VC.14.29.16.11.x86.x64", `
+            "modify", "--installPath", "`"$vs`"", `
+            "--add", "Microsoft.VisualStudio.Component.${{ matrix.target.component }}.x86.x64", `
             "--quiet", "--norestart", "--nocache"
       - uses: ilammy/msvc-dev-cmd@v1
         with:

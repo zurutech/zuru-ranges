@@ -5,26 +5,43 @@ on:
     branches: [main]
     paths:
       - 'include/**'
+      - 'modules/**'
       - 'test/**'
       - 'cmake/**'
+      - 'ci/**'
       - 'CMakeLists.txt'
+      - 'scripts/make.sh'
       - '.github/workflows/sanitizers.yml'
   pull_request:
     paths:
       - 'include/**'
+      - 'modules/**'
       - 'test/**'
       - 'cmake/**'
+      - 'ci/**'
       - 'CMakeLists.txt'
+      - 'scripts/make.sh'
       - '.github/workflows/sanitizers.yml'
   workflow_dispatch:
+  # Weekly, so the rows that float with the runner images and package archives ("newest",
+  # apt.llvm.org, gcc:N) are rebuilt without a push.
+  schedule:
+    - cron: '0 4 * * 1'
 
 jobs:
   sanitizers:
-    name: clang + ASan/UBSan
+    name: ${{ matrix.name }} + ASan/UBSan
     runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # UE 5.7's Linux toolchain; libclang-rt: the sanitizer runtimes
+          - {name: clang++-20 libc++, image: 'ubuntu:24.04', make: -c clang++-20 --libcxx,
+             setup: ci/install-clang.sh 20 && apt-get install -y -qq --no-install-recommends libclang-rt-20-dev}
+          - {name: g++-16, image: 'gcc:16', setup: ci/install-cmake-ninja.sh, make: -c g++}
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y cmake ninja-build
-      - run: cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DZR_ENABLE_SANITIZERS=ON
-      - run: cmake --build build
-      - run: ctest --test-dir build --output-on-failure
+      - run: ${{ matrix.setup }}
+      - run: scripts/make.sh ${{ matrix.make }} -W -s

@@ -17,9 +17,22 @@
  */
 module;
 
+#include <cstddef>
+#include <new>
+
 #include "zr/ranges.h"
 
 export module zr;
+
+// [module.global.frag]/3: a global-module-fragment declaration that is not decl-reachable from
+// the purview is discarded, and importers cannot reach it. std::construct_at (zr's caches,
+// std::optional) uses the placement operator new only in dependent expressions; with libc++ 23
+// it is discarded and instantiating construct_at in an importer fails. Naming it here keeps it.
+namespace zr::ranges::detail {
+[[maybe_unused]] inline void* module_placement_new(void* p) noexcept {
+    return ::operator new(std::size_t{1}, p);
+}
+} // namespace zr::ranges::detail
 
 export namespace zr::ranges {
 // algorithm/nonmodifying.h, algorithm/fold.h, algorithm/results.h, ranges/dangling.h

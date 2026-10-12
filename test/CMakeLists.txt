@@ -23,7 +23,7 @@ if(NOT GTest_FOUND)
 
     set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
     # googletest uses Win32 threads there; its pthread probes are failing links, and a failing
-    # link.exe under wine 6 (floor image) can hang the configure step.
+    # link.exe under wine 6 can hang the configure step.
     if(MSVC)
         set(gtest_disable_pthreads ON CACHE BOOL "" FORCE)
     endif()
@@ -109,9 +109,23 @@ file(GLOB ZR_TEST_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/ranges/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/algorithm/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/iterator/*.cpp)
-# Clang < 16 substitutes constraints eagerly and cannot instantiate libstdc++'s range adaptors
-# (libc++ < 16 ships them as experimental): there is no std side to interoperate with.
-if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 16)
+# Clang < 16 substitutes constraints eagerly and cannot instantiate libstdc++'s range adaptors,
+# and libc++ < 16 ships them as experimental (UE 5.3 to 5.5: clang 16/18 over libc++ 15):
+# there is no std side to interoperate with. Same condition as ZR_TEST_STD_VIEWS in
+# conformance.cpp.
+include(CheckCXXSourceCompiles)
+check_cxx_source_compiles([[
+#include <version>
+#if defined(_LIBCPP_VERSION)
+#if _LIBCPP_VERSION < 160000
+#error libc++ < 16: experimental range adaptors
+#endif
+#elif defined(__clang__) && __clang_major__ < 16
+#error clang < 16: cannot instantiate libstdc++'s range adaptors
+#endif
+int main() {}
+]] ZR_HAS_STD_RANGE_ADAPTORS)
+if(NOT ZR_HAS_STD_RANGE_ADAPTORS)
     list(FILTER ZR_TEST_SOURCES EXCLUDE REGEX "/std_interop\\.cpp$")
 endif()
 foreach(source ${ZR_TEST_SOURCES})
