@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'include/**'
+      - 'modules/**'
       - 'test/**'
       - 'cmake/**'
       - 'CMakeLists.txt'
@@ -12,11 +13,16 @@ on:
   pull_request:
     paths:
       - 'include/**'
+      - 'modules/**'
       - 'test/**'
       - 'cmake/**'
       - 'CMakeLists.txt'
       - '.github/workflows/clang-cl.yml'
   workflow_dispatch:
+  # Weekly, so the rows that float with the runner images and package archives ("newest",
+  # apt.llvm.org, gcc:N) are rebuilt without a push.
+  schedule:
+    - cron: '0 4 * * 1'
 
 jobs:
   clang-cl:
@@ -28,19 +34,25 @@ jobs:
         config: [Debug, Release]
         target:
           # floor: clang-cl 13 (UE 5.3) on the MSVC 14.29 STL, the newest that accepts it
-          - {os: windows-2022, toolset: '14.29', llvm: '13.0.1'}
+          - {os: windows-2022, toolset: '14.29', component: VC.14.29.16.11, llvm: '13.0.1'}
+          # UE 5.4, UE 5.5 and UE 5.6/5.7's clang-cl, on their UBT minimum STL
+          - {os: windows-2022, toolset: '14.34', component: VC.14.34.17.4, llvm: '15.0.7'}
+          - {os: windows-2022, toolset: '14.38', component: VC.14.38.17.8, llvm: '16.0.6'}
+          - {os: windows-2022, toolset: '14.38', component: VC.14.38.17.8, llvm: '18.1.8'}
           # newest: the image's LLVM on its newest STL
           - {os: windows-2025-vs2026}
     steps:
       - uses: actions/checkout@v4
-      # The VS 2019 toolset is an optional component of the VS 2022 image.
-      - if: matrix.target.toolset == '14.29'
+      # Older toolsets (VS 2019's 14.29, VS 2022's earlier ones) are optional components of the
+      # VS 2022 image.
+      - if: matrix.target.component
         shell: pwsh
         run: |
           $installer = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer"
           $vs = & "$installer\vswhere.exe" -latest -property installationPath
           Start-Process -Wait -NoNewWindow -FilePath "$installer\vs_installer.exe" -ArgumentList `
-            "modify", "--installPath", "`"$vs`"", "--add", "Microsoft.VisualStudio.Component.VC.14.29.16.11.x86.x64", `
+            "modify", "--installPath", "`"$vs`"", `
+            "--add", "Microsoft.VisualStudio.Component.${{ matrix.target.component }}.x86.x64", `
             "--quiet", "--norestart", "--nocache"
       - if: matrix.target.llvm
         run: choco install llvm --version=${{ matrix.target.llvm }} --allow-downgrade -y --no-progress

@@ -29,7 +29,7 @@ set(CMAKE_MT "${ZR_MSVC_ROOT}/bin/x64/mt")
 set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>")
 
 # No incremental linking: each /INCREMENTAL link.exe under wine maps an .ilk of tens of MB and
-# parallel links exhaust a CI container's memory (LNK1104/LNK1102). Cache entries set here
+# parallel links exhaust a container's memory (LNK1104/LNK1102). Cache entries set here
 # take precedence over the platform defaults ("/debug /INCREMENTAL").
 foreach(_zr_kind EXE SHARED MODULE)
     set(CMAKE_${_zr_kind}_LINKER_FLAGS_DEBUG "/debug /INCREMENTAL:NO" CACHE STRING "")

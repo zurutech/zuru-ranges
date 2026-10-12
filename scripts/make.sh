@@ -9,6 +9,9 @@
 #   -f, --fuzzers        Build libFuzzer targets and run only their smoke test (forces clang++)
 #   -m, --module         Build and run only the `import zr;` smoke tests (ZR_MODULE=ON)
 #   -l, --libcxx         Clang with libc++ instead of the platform standard library
+#       --libcxx-root <d>
+#                        libc++ of another LLVM install (<d>/include/c++/v1, <d>/lib): UE 5.3
+#                        to 5.5 build with clang 16/18 against libc++ 15. Implies --libcxx
 #       --std <n>        C++ standard (default 20)
 #       --config <type>  CMAKE_BUILD_TYPE: Debug (default) | Release | RelWithDebInfo
 #   -H, --hardened       Standard library assertions: _GLIBCXX_ASSERTIONS (libstdc++),
@@ -39,6 +42,7 @@ sanitizers="OFF"
 fuzzers="OFF"
 module="OFF"
 libcxx=0
+libcxx_root=""
 std=20
 config=Debug
 hardened=0
@@ -55,6 +59,7 @@ while [[ $# -gt 0 ]]; do
         -f|--fuzzers) fuzzers="ON"; compiler="clang++"; shift ;;
         -m|--module) module="ON"; shift ;;
         -l|--libcxx) libcxx=1; shift ;;
+        --libcxx-root) libcxx=1; libcxx_root="$(abspath "$2")"; shift 2 ;;
         --std) std="$2"; shift 2 ;;
         --config) config="$2"; shift 2 ;;
         -H|--hardened) hardened=1; shift ;;
@@ -62,7 +67,7 @@ while [[ $# -gt 0 ]]; do
         -B|--build-dir) build="$(abspath "$2")"; shift 2 ;;
         --junit) junit="$(abspath "$2")"; shift 2 ;;
         --clean) clean=1; shift ;;
-        -h|--help) sed -n '2,27p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '2,30p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "unknown option: $1" >&2; exit 1 ;;
     esac
 done
@@ -80,7 +85,14 @@ declare -a args=(-S "${root}" -B "${build}" -G Ninja
 # CMAKE_CXX_FLAGS also reach the link line of C++ executables. A system GoogleTest is built
 # against the platform standard library in its default mode: fetch one for libc++ or hardening.
 cxxflags=""
-if [[ $libcxx -eq 1 ]]; then
+if [[ -n "${libcxx_root}" ]]; then
+    # -nostdinc++/-nostdlib++ in place of -stdlib=libc++, which would go unused (-Werror) at
+    # compile time; the C compiler (GoogleTest's project, possibly gcc) sees none of it.
+    cxxflags+=" -nostdinc++ -isystem ${libcxx_root}/include/c++/v1"
+    args+=("-DCMAKE_EXE_LINKER_FLAGS=-L${libcxx_root}/lib -Wl,-rpath,${libcxx_root}/lib"
+           "-DCMAKE_CXX_STANDARD_LIBRARIES=-nostdlib++ -lc++ -lc++abi"
+           -DCMAKE_DISABLE_FIND_PACKAGE_GTest=ON)
+elif [[ $libcxx -eq 1 ]]; then
     cxxflags+=" -stdlib=libc++"
     args+=(-DCMAKE_DISABLE_FIND_PACKAGE_GTest=ON)
 fi
@@ -109,8 +121,8 @@ if [[ $wine -eq 1 ]]; then
     # One persistent wineserver for the whole run: a fresh one per test costs seconds each.
     # Boot the prefix here, detached: its services otherwise start inside the first test and
     # inherit that test's stdout, so ctest waits on it forever. Nothing wine starts may hold
-    # this script's stdout, or a CI runner waits on the open pipe after the script exits.
-    # The wineserver holds every wine process's handles as file descriptors: at Docker's
+    # this script's stdout, or whoever reads it waits on the open pipe after the script exits.
+    # The wineserver holds every wine process's handles as file descriptors: at a container's
     # default soft limit (1024) parallel cl.exe/link.exe fail to open files (Windows error 4).
     ulimit -n "$(ulimit -Hn)" 2>/dev/null || true
     wineserver -p </dev/null >/dev/null 2>&1
@@ -144,7 +156,7 @@ declare -a ctest_args=(--test-dir "${build}" --output-on-failure --timeout 300 -
 
 if [[ "${module}" == "ON" ]]; then
     cmake --build "${build}" -j "${jobs}" --target zr_module_smoke
-    ctest_args+=(-R '^zr_module_smoke(_installed)?$')
+    ctest_args+=(-R '^zr_module_smoke(_installed|_subdirectory)?$')
 elif [[ "${fuzzers}" == "ON" ]]; then
     cmake --build "${build}" -j "${jobs}"
     ctest_args+=(-R concat_fuzzer_smoke)

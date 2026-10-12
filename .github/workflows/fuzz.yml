@@ -5,26 +5,37 @@ on:
     branches: [main]
     paths:
       - 'include/**'
+      - 'modules/**'
       - 'test/**'
       - 'cmake/**'
+      - 'ci/**'
       - 'CMakeLists.txt'
+      - 'scripts/make.sh'
       - '.github/workflows/fuzz.yml'
   pull_request:
     paths:
       - 'include/**'
+      - 'modules/**'
       - 'test/**'
       - 'cmake/**'
+      - 'ci/**'
       - 'CMakeLists.txt'
+      - 'scripts/make.sh'
       - '.github/workflows/fuzz.yml'
   workflow_dispatch:
+  # Weekly, so the rows that float with the runner images and package archives ("newest",
+  # apt.llvm.org, gcc:N) are rebuilt without a push.
+  schedule:
+    - cron: '0 4 * * 1'
 
 jobs:
   fuzz:
-    name: clang + libFuzzer (smoke)
+    name: clang++-20 + libFuzzer (smoke)
     runs-on: ubuntu-latest
+    container: ubuntu:24.04
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y cmake ninja-build
-      - run: cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DZR_BUILD_FUZZERS=ON
-      - run: cmake --build build
-      - run: ctest --test-dir build --output-on-failure -R concat_fuzzer_smoke
+      - run: ci/install-clang.sh 20
+      # libFuzzer and the sanitizer runtimes
+      - run: apt-get install -y -qq --no-install-recommends libclang-rt-20-dev
+      - run: scripts/make.sh -f -c clang++-20 -W

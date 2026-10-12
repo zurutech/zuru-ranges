@@ -2,7 +2,7 @@
 # Install clang-N (and libc++-N from 15 on) on Ubuntu, from the distro archive or else
 # apt.llvm.org, plus g++ for libstdc++ and the build tools. Used by the Linux clang matrix:
 #   ci/install-clang.sh 18        ->  scripts/make.sh -c clang++-18 [--libcxx]
-# Ubuntu 22.04 carries clang 13-15, Ubuntu 24.04 clang 16 onwards.
+# Ubuntu 22.04 carries clang 13-15, Ubuntu 24.04 clang 16-20; newer come from apt.llvm.org.
 set -eu
 
 N=$1

@@ -38,6 +38,15 @@ using namespace zr::ranges;
 #define ZR_TEST_STD_VIEWS 1
 #endif
 
+// The MSVC STL after 14.29 and before 14.37 specializes basic_common_reference for tuple
+// (P2321R2) without the tuple(tuple<U...>&) constructor, so no tuple-of-references iterator is
+// std::indirectly_readable there (see std_interop.cpp).
+#if defined(_MSVC_STL_UPDATE) && _MSVC_STL_UPDATE > 202105L && _MSVC_STL_UPDATE < 202305L
+#define ZR_TEST_STD_TUPLE_PROXIES 0
+#else
+#define ZR_TEST_STD_TUPLE_PROXIES 1
+#endif
+
 namespace {
 
 using vec = std::vector<int>;
@@ -296,13 +305,15 @@ TEST(Conformance, PostfixIncrementOnUnrealForward) {
 }
 
 TEST(Conformance, FullCategoriesOverStdBases) {
+#if ZR_TEST_STD_TUPLE_PROXIES
     static_assert(std::ranges::random_access_range<decltype(views::zip(std::declval<vec&>(), std::declval<vec&>()))>);
+    static_assert(std::ranges::random_access_range<decltype(views::enumerate(std::declval<vec&>()))>);
+    static_assert(std::ranges::random_access_range<decltype(views::cartesian_product(std::declval<vec&>(), std::declval<vec&>()))>);
+#endif
     static_assert(std::ranges::random_access_range<decltype(views::transform(std::declval<vec&>(), twice))>);
     static_assert(std::ranges::bidirectional_range<decltype(views::filter(std::declval<vec&>(), is_even))>);
     static_assert(std::ranges::random_access_range<decltype(views::reverse(std::declval<vec&>()))>);
     static_assert(std::ranges::random_access_range<decltype(views::concat(std::declval<vec&>(), std::declval<vec&>()))>);
-    static_assert(std::ranges::random_access_range<decltype(views::enumerate(std::declval<vec&>()))>);
-    static_assert(std::ranges::random_access_range<decltype(views::cartesian_product(std::declval<vec&>(), std::declval<vec&>()))>);
     static_assert(std::ranges::bidirectional_range<decltype(views::join(std::declval<std::vector<vec>&>()))>);
     static_assert(std::ranges::bidirectional_range<decltype(views::reverse(std::declval<std::list<int>&>()))>);
     // enumerate: <=> and - need only the index.

@@ -21,6 +21,10 @@ on:
       - 'scripts/make.sh'
       - '.github/workflows/module-gcc.yml'
   workflow_dispatch:
+  # Weekly, so the rows that float with the runner images and package archives ("newest",
+  # apt.llvm.org, gcc:N) are rebuilt without a push.
+  schedule:
+    - cron: '0 4 * * 1'
 
 jobs:
   module-gcc:
