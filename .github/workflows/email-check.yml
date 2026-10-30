@@ -1,0 +1,28 @@
+name: email-check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  email-check:
+    name: public author email
+    runs-on: ubuntu-latest
+    steps:
+      # A noreply author means "Keep my email addresses private" is on (CONTRIBUTING.md, Public email).
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/commits" --paginate --jq '.[].commit.author.email' \
+            | sort -u > emails
+          cat emails
+          if grep -q 'noreply\.github\.com$' emails; then
+            echo "::error::A commit author is a GitHub noreply address: turn off 'Keep my email addresses private'," \
+              "commit as the address it hides, force push. CONTRIBUTING.md, Public email."
+            exit 1
+          fi

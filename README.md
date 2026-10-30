@@ -393,3 +393,9 @@ Linux clang 16 and 18 over libc++ 15 (5.3 to 5.5), clang 18 over libc++ 18 and 1
 18 on it; on macOS Xcode 15.0, 15.2, 16.4 and the newest. Validated beyond the fakes against the real engine
 sources of 5.3 to 5.7, and on Linux against each version's bundled libc++ (local, never
 published).
+
+## Contributing
+
+[CONTRIBUTING.md](CONTRIBUTING.md) is the policy (what is accepted, pull request title and
+description, tests, review), [docs/git-workflow.md](docs/git-workflow.md) the fork and rebase
+mechanics, and [MAINTAINERS.md](MAINTAINERS.md) who reviews.
