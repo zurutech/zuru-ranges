@@ -335,9 +335,10 @@ C++20, and a standard library with `<ranges>`.
 ### Compilers and standard libraries
 
 The floor of each family is the oldest version that needs no workaround of substance. CI
-builds every GCC and Linux Clang major between the floor and the newest; of MSVC, clang-cl and
-Apple Clang the floor, the versions UE requires and the newest the runner image ships (CI also
-runs weekly, so the floating versions are rebuilt without a push). All with
+builds every GCC and Linux Clang major between the floor and the newest; of MSVC and clang-cl
+the floor, the versions UE requires and the newest the runner image ships; of Apple Clang
+Xcode 16.4 and the newest (CI also runs weekly, so the floating versions are rebuilt without a
+push). All with
 warnings as errors, in strict `-std=c++20` as UBT compiles (not `gnu++20`), each test in the
 three Unreal configurations.
 
@@ -348,10 +349,15 @@ three Unreal configurations.
 | Clang | libc++ | 15 to 23 | Debug: all; Release: 15, 16, 18, 20, 23, 16 and 18 over libc++ 15, 18 over libc++ 19; hardened (debug mode): 23 |
 | MSVC | MSVC STL | 14.29 (VS 2019 16.11), 14.34, 14.38, 14.44, newest | Debug and Release |
 | clang-cl | MSVC STL | 13 (STL 14.29), 15 (STL 14.34), 16 and 18 (STL 14.38), newest | Debug and Release |
-| Apple Clang | Apple libc++ | 15 (Xcode 15.0, 15.2), 16 (Xcode 16.4), newest | Debug and Release |
+| Apple Clang | Apple libc++ | 16 (Xcode 16.4), newest; 15 (Xcode 15) untested, see below | Debug and Release |
 
 C++23 is built with GCC 16 and Clang 23 (libc++); `import zr;` with Clang 18 (libstdc++), Clang
 20 and 23 (libc++) and GCC 16 (GCC 14 and 15 reject it; CMake 3.28+). libc++ 14 and Xcode 14 have no `std::ranges` at all.
+
+Xcode 15 is still the Apple Clang floor, but CI no longer builds it: GitHub retired the
+`macos-14` runner image, the last one with Xcode 15, on 2026-11-02. Xcode 15.0 and 15.2 were
+built in CI through release 0.1.1 and nothing is known to break them since, so Xcode 15 is
+expected to work, but that is not backed by tests.
 
 Every view, `subrange` and `ranges::to` are usable in constant expressions
 (`test/compile/constexpr_checks.cpp`). `concat` needs a constexpr `std::variant` (P2231R1:
@@ -386,11 +392,13 @@ installed Xcode, so the library's minimum can be above UE's.
 | 5.4 | MSVC 14.34, clang-cl 15 | clang 16.0.6, bundled libc++ 15 | Xcode 15 to 15.9 (UE: from 14.1) |
 | 5.3 | MSVC 14.29, clang-cl 13 | clang 16, bundled libc++ 15 | Xcode 15 (UE: from 14.1) |
 
-Every cell is supported, with the library's own Xcode 15 minimum on 5.3 and 5.4. It uses nothing
+Every Windows and Linux cell is supported, and on macOS Xcode 16 and later. Xcode 15 (the whole
+macOS range of 5.3 and 5.4, the low end of 5.5 to 5.7) is expected to work but untested, see
+above; the library's minimum there is Xcode 15, not UE's 14.1. It uses nothing
 from the standard library that libc++ 15 leaves experimental. CI builds the UE toolchains: on
 Linux clang 16 and 18 over libc++ 15 (5.3 to 5.5), clang 18 over libc++ 18 and 19 (5.6), clang
 20 over libc++ 20 (5.7); on Windows each version's UBT minimum MSVC, and clang-cl 13, 15, 16 and
-18 on it; on macOS Xcode 15.0, 15.2, 16.4 and the newest. Validated beyond the fakes against the real engine
+18 on it; on macOS Xcode 16.4 and the newest. Validated beyond the fakes against the real engine
 sources of 5.3 to 5.7, and on Linux against each version's bundled libc++ (local, never
 published).
 
