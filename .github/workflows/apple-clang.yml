@@ -35,10 +35,8 @@ jobs:
       matrix:
         config: [Debug, Release]
         target:
-          # floor: Xcode 15.0, the library's (UE 5.3/5.4 accept Xcode 14.1, whose libc++ has no
-          # <ranges>); 15.2, UE 5.5's minimum
-          - {os: macos-14, xcode: '15.0'}
-          - {os: macos-14, xcode: '15.2'}
+          # Xcode 15 (the library's floor, UE 5.5's minimum) is not built: macos-14, the last
+          # image with it, was retired on 2026-11-02
           # UE 5.5's newest
           - {os: macos-15, xcode: '16.4'}
           - {os: macos-latest}
