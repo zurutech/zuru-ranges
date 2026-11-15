@@ -70,9 +70,11 @@ int main() {
     auto ks = zr::views::zip(arr, arr) | zr::views::keys;
     auto vs = zr::views::zip(arr, arr) | zr::views::values;
     auto el = zr::views::zip(arr, arr) | zr::views::elements<1>;
+    auto inp = arr | zr::views::as_input;
     zr::ranges::take_view<zr::ranges::ref_view<int[5]>>* tkp = &tk;
     zr::ranges::drop_view<zr::ranges::ref_view<int[5]>>* drp = &dr;
-    (void)tkp; (void)drp;
+    zr::ranges::as_input_view<zr::ranges::ref_view<int[5]>>* inpp = &inp;
+    (void)tkp; (void)drp; (void)inpp;
     static_assert(sizeof(zr::ranges::chunk_by_view<zr::ranges::ref_view<int[5]>, bool (*)(int, int)>) > 0);
     static_assert(sizeof(zr::ranges::keys_view<decltype(zr::views::zip(arr, arr))>) > 0);
     static_assert(sizeof(zr::ranges::values_view<decltype(zr::views::zip(arr, arr))>) > 0);
@@ -91,6 +93,7 @@ int main() {
     for (int x : ks) sum += x;
     for (int x : vs) sum += x;
     for (int x : el) sum += x;
+    for (int x : inp) sum += x;
     if (zr::ranges::distance(chk) != 1 || zr::ranges::distance(arr) != 5) return 1;
     (void)a; (void)enm; (void)sgl; (void)emp; (void)iot; (void)zip; (void)cart; (void)sub; (void)cat;
     if (zr::ranges::size(arr) != 5 || zr::ranges::ssize(arr) != 5 || zr::ranges::element_at(arr, 1) != 2) return 1;

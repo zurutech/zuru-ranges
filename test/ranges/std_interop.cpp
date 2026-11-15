@@ -6,6 +6,7 @@
 #include "CoreMinimal.h"
 
 #include "zr/ranges/range_concepts.h"
+#include "zr/ranges/views/as_input_view.h"
 #include "zr/ranges/views/cartesian_product_view.h"
 #include "zr/ranges/views/chunk_by_view.h"
 #include "zr/ranges/views/concat_view.h"
@@ -41,6 +42,15 @@
 #define ZR_TEST_STD_TUPLE_PROXIES 0
 #else
 #define ZR_TEST_STD_TUPLE_PROXIES 1
+#endif
+
+// The MSVC 14.29 STL unwraps a sentinel that is one of its own iterators even where the iterator
+// cannot be unwrapped: an as_input_view over a std container, whose sentinel is the container's
+// iterator, cannot feed std algorithms or adaptors there.
+#if defined(_MSVC_STL_UPDATE) && _MSVC_STL_UPDATE <= 202105L
+#define ZR_TEST_STD_OVER_AS_INPUT 0
+#else
+#define ZR_TEST_STD_OVER_AS_INPUT 1
 #endif
 
 // A program-defined view and a program-defined borrowed range, each opted in through the
@@ -114,6 +124,12 @@ using UeReverse = decltype(zr::views::reverse(std::declval<TArray<int>&>()));
 static_assert(std::ranges::forward_range<StdReverse>);
 static_assert(std::ranges::random_access_range<StdReverse> && std::ranges::random_access_range<UeReverse>);
 static_assert(std::ranges::sized_range<UeReverse>);
+
+// as_input: input only and non-common to std too; its iterator is move-only.
+using StdAsInput = decltype(zr::views::as_input(std::declval<std::vector<int>&>()));
+static_assert(std::ranges::input_range<StdAsInput> && !std::ranges::forward_range<StdAsInput> && !std::ranges::common_range<StdAsInput>);
+static_assert(std::ranges::sized_range<StdAsInput> && std::ranges::borrowed_range<StdAsInput>);
+static_assert(std::sized_sentinel_for<std::ranges::sentinel_t<StdAsInput>, std::ranges::iterator_t<StdAsInput>>);
 
 // A gated zr view is a std::ranges::view ([range.view]/7 opt-in in view_interface.h), so
 // std adaptors take it as is, also on libraries without P2415R2's owning_view (libstdc++ 11).
@@ -213,7 +229,7 @@ TEST(StdInterop, GatedViewsFeedStdAdaptors) {
 #endif
 }
 
-// take, drop, chunk_by, elements over std bases are std views.
+// take, drop, as_input, chunk_by, elements over std bases are std views.
 TEST(StdInterop, SlicingAndGroupingViewsFeedStdAdaptors) {
     std::vector<int> a{1, 2, 3, 4, 5};
     std::vector<int> got;
@@ -222,6 +238,9 @@ TEST(StdInterop, SlicingAndGroupingViewsFeedStdAdaptors) {
     }
     EXPECT_EQ(got, (std::vector<int>{3, 4, 5}));
     EXPECT_EQ(std::ranges::distance(zr::views::iota(0) | zr::views::take(4) | std::views::filter(is_even)), 2);
+#if ZR_TEST_STD_OVER_AS_INPUT
+    EXPECT_EQ(std::ranges::distance(a | zr::views::as_input | std::views::filter(is_even)), 2);
+#endif
 
     // take over a non-sized base: std::counted_iterator and the take_view sentinel.
     static_assert(std::ranges::forward_range<decltype(zr::views::filter(a, is_even) | zr::views::take(1))>);

@@ -23,7 +23,7 @@
  * Views (zr::ranges + adaptor objects in zr::views):
  *   - all (ref_view, owning_view), transform, filter, take, drop, join, elements (keys,
  *     values), reverse, maybe (non-standard)
- *   - zip, enumerate, chunk_by, cartesian_product (C++23), concat (C++26)
+ *   - zip, enumerate, chunk_by, cartesian_product (C++23), concat, as_input (C++26)
  * Factories (zr::views):
  *   - empty, single, iota, indices (C++26)
  * Iterators: zr/iterator.h ([iterator.synopsis]). Algorithms: zr/algorithm.h ([algorithm.syn],
@@ -42,6 +42,7 @@
 #include "zr/ranges/view_interface.h"
 
 #include "zr/ranges/views/all.h"
+#include "zr/ranges/views/as_input_view.h"
 #include "zr/ranges/views/cartesian_product_view.h"
 #include "zr/ranges/views/chunk_by_view.h"
 #include "zr/ranges/views/concat_view.h"

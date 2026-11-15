@@ -158,6 +158,7 @@ using zr::ranges::movable_box;
 using zr::ranges::to;
 
 // ranges/views/
+using zr::ranges::as_input_view;
 using zr::ranges::can_maybe_view;
 using zr::ranges::cartesian_product_view;
 using zr::ranges::chunk_by_view;
@@ -186,6 +187,7 @@ using zr::ranges::zip_view;
 export namespace zr::ranges::views {
 using zr::ranges::views::all;
 using zr::ranges::views::all_t;
+using zr::ranges::views::as_input;
 using zr::ranges::views::cartesian_product;
 using zr::ranges::views::chunk_by;
 using zr::ranges::views::concat;

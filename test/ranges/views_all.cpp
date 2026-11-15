@@ -7,6 +7,7 @@
 #include "zr/unreal/ue_range_traits.h"
 
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -22,6 +23,12 @@ static_assert(sized_range<ref_view<TArray<int>>>);
 static_assert(std::is_same_v<views::all_t<TArray<int>&>, ref_view<TArray<int>>>);
 static_assert(std::is_same_v<views::all_t<std::vector<int>&>, ref_view<std::vector<int>>>);
 static_assert(std::is_same_v<views::all_t<std::vector<int>>, owning_view<std::vector<int>>>);
+// An rvalue container piped into a closure object (MSVC 14.29 rejected the pipe); a const one
+// is no owning_view.
+static_assert(std::is_same_v<decltype(std::declval<std::vector<int>>() | views::all), owning_view<std::vector<int>>>);
+template <class T>
+concept pipes_into_all = requires { std::declval<T>() | views::all; };
+static_assert(!pipes_into_all<const std::vector<int>>);
 
 namespace {
 struct count_fn : range_adaptor_closure<count_fn> {
