@@ -6,6 +6,7 @@
 #include "CoreMinimal.h"
 
 #include "zr/ranges/range_concepts.h"
+#include "zr/ranges/views/as_input_view.h"
 #include "zr/ranges/views/cartesian_product_view.h"
 #include "zr/ranges/views/chunk_by_view.h"
 #include "zr/ranges/views/concat_view.h"
@@ -115,6 +116,12 @@ static_assert(std::ranges::forward_range<StdReverse>);
 static_assert(std::ranges::random_access_range<StdReverse> && std::ranges::random_access_range<UeReverse>);
 static_assert(std::ranges::sized_range<UeReverse>);
 
+// as_input: input only and non-common to std too; its iterator is move-only.
+using StdAsInput = decltype(zr::views::as_input(std::declval<std::vector<int>&>()));
+static_assert(std::ranges::input_range<StdAsInput> && !std::ranges::forward_range<StdAsInput> && !std::ranges::common_range<StdAsInput>);
+static_assert(std::ranges::sized_range<StdAsInput> && std::ranges::borrowed_range<StdAsInput>);
+static_assert(std::sized_sentinel_for<std::ranges::sentinel_t<StdAsInput>, std::ranges::iterator_t<StdAsInput>>);
+
 // A gated zr view is a std::ranges::view ([range.view]/7 opt-in in view_interface.h), so
 // std adaptors take it as is, also on libraries without P2415R2's owning_view (libstdc++ 11).
 static_assert(std::ranges::view<StdTransform>);
@@ -213,7 +220,7 @@ TEST(StdInterop, GatedViewsFeedStdAdaptors) {
 #endif
 }
 
-// take, drop, chunk_by, elements over std bases are std views.
+// take, drop, as_input, chunk_by, elements over std bases are std views.
 TEST(StdInterop, SlicingAndGroupingViewsFeedStdAdaptors) {
     std::vector<int> a{1, 2, 3, 4, 5};
     std::vector<int> got;
@@ -222,6 +229,7 @@ TEST(StdInterop, SlicingAndGroupingViewsFeedStdAdaptors) {
     }
     EXPECT_EQ(got, (std::vector<int>{3, 4, 5}));
     EXPECT_EQ(std::ranges::distance(zr::views::iota(0) | zr::views::take(4) | std::views::filter(is_even)), 2);
+    EXPECT_EQ(std::ranges::distance(a | zr::views::as_input | std::views::filter(is_even)), 2);
 
     // take over a non-sized base: std::counted_iterator and the take_view sentinel.
     static_assert(std::ranges::forward_range<decltype(zr::views::filter(a, is_even) | zr::views::take(1))>);

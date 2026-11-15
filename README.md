@@ -109,6 +109,7 @@ The standard specifies view objects in two kinds:
 | Range adaptor closure | `views::elements<N>`, `views::keys`, `views::values` | `elements_view`, `keys_view`, `values_view` | [range.elements] | `views/elements_view.h` |
 | Range adaptor closure | `views::enumerate` | `enumerate_view` | [range.enumerate] (C++23) | `views/enumerate_view.h` |
 | Range adaptor | `views::chunk_by` | `chunk_by_view` | [range.chunk.by] (C++23) | `views/chunk_by_view.h` |
+| Range adaptor closure | `views::as_input` | `as_input_view` | [range.as.input] (C++26) | `views/as_input_view.h` |
 | Range adaptor closure | `views::maybe` | `filter` + `transform` | non-standard, after P1255R14 | `views/maybe_view.h` |
 | Customization point object | `views::zip` | `zip_view` | [range.zip] (C++23) | `views/zip_view.h` |
 | Customization point object | `views::cartesian_product` | `cartesian_product_view` | [range.cartesian] (C++23) | `views/cartesian_product_view.h` |

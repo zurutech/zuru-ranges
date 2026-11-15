@@ -125,6 +125,15 @@ constexpr bool to_cx() {
 static_assert(to_cx());
 #endif
 
+constexpr bool as_input_cx() {
+    std::array<int, 3> a{1, 2, 3};
+    auto in = a | v::as_input;
+    auto it = in.begin();
+    ++it;
+    return sum(in) == 6 && in.size() == 3 && in.end() - it == 2 && sum(in | v::take(2)) == 3;
+}
+static_assert(as_input_cx());
+
 constexpr bool elements_cx() {
     std::array<std::pair<int, int>, 2> p{{{1, 10}, {2, 20}}};
     return sum(p | v::keys) == 3 && sum(p | v::values) == 30;
