@@ -5,13 +5,16 @@
 
 #include "zr/ranges/range_concepts.h"
 #include "zr/ranges/views/as_input_view.h"
+#include "zr/ranges/views/iota_view.h"
 #include "zr/ranges/views/subrange.h"
+#include "zr/ranges/views/take_view.h"
 #include "zr/unreal/ue_range_traits.h"
 
 #include <concepts>
 #include <iterator>
 #include <sstream>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -48,8 +51,19 @@ static_assert(borrowed_range<vec_input> && !borrowed_range<owning_input>);
 static_assert(std::same_as<decltype(std::declval<istream_range>() | views::as_input), istream_range>);
 static_assert(std::same_as<decltype(std::declval<vec_input>() | views::as_input), vec_input>);
 
-// [range.as.input.iterator]: move-only; iterator<false> converts to iterator<true> only.
+// [range.as.input.view]: default-constructible as V is; as_input_view(R&&) deduces
+// views::all_t<R>; base() const& requires copy_constructible<V>.
+static_assert(std::default_initializable<owning_input> && !std::default_initializable<vec_input>);
+static_assert(std::same_as<decltype(as_input_view(std::declval<vec&>())), vec_input>);
+template <class T>
+concept has_base = requires(T&& t) { std::forward<T>(t).base(); };
+static_assert(has_base<vec_input&> && has_base<owning_input> && !has_base<owning_input&>);
+
+// [range.as.input.iterator]: move-only; iterator<false> converts to iterator<true> only;
+// postfix ++ returns void.
 static_assert(std::movable<iterator_t<vec_input>> && !std::copyable<iterator_t<vec_input>>);
+static_assert(std::default_initializable<iterator_t<vec_input>>);
+static_assert(std::is_void_v<decltype(std::declval<iterator_t<vec_input>&>()++)>);
 static_assert(std::convertible_to<iterator_t<owning_input>, iterator_t<const owning_input>>);
 static_assert(!std::convertible_to<iterator_t<const owning_input>, iterator_t<owning_input>>);
 
@@ -64,12 +78,28 @@ TEST(AsInputView, YieldsBaseElements) {
     auto in = v | views::as_input;
     EXPECT_EQ(collect(in), v);
     EXPECT_EQ(in.size(), 3U);
-    EXPECT_EQ(zr::ranges::reserve_hint(in), 3U);
+    EXPECT_EQ(std::as_const(in).size(), 3U);
 
     for (int& x : in) {
         x *= 10;
     }
     EXPECT_EQ(v, (vec{10, 20, 30}));
+}
+
+TEST(AsInputView, Base) {
+    vec v{1, 2};
+    auto in = v | views::as_input;
+    EXPECT_EQ(&in.base().base(), &v);
+    EXPECT_EQ((vec{1, 2} | views::as_input).base().base(), v); // owning_view: base() && only
+}
+
+TEST(AsInputView, ReserveHintOfUnsizedBase) {
+    // ranges::reserve_hint is ranges::size for a sized range: only an unsized base reaches the
+    // members.
+    auto in = views::iota(0) | views::take(3) | views::as_input;
+    static_assert(approximately_sized_range<decltype(in)> && !sized_range<decltype(in)>);
+    EXPECT_EQ(zr::ranges::reserve_hint(in), 3U);
+    EXPECT_EQ(zr::ranges::reserve_hint(std::as_const(in)), 3U);
 }
 
 TEST(AsInputView, InputOnlyBasePassesThrough) {
@@ -89,7 +119,7 @@ TEST(AsInputView, SizedSentinel) {
     auto in = v | views::as_input;
     static_assert(std::sized_sentinel_for<sentinel_t<vec_input>, iterator_t<vec_input>>);
     auto it = in.begin();
-    ++it;
+    it++;
     EXPECT_EQ(in.end() - it, 2);
     EXPECT_EQ(it - in.end(), -2);
     EXPECT_EQ(it.base(), v.begin() + 1);
