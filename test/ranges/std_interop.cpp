@@ -44,6 +44,15 @@
 #define ZR_TEST_STD_TUPLE_PROXIES 1
 #endif
 
+// The MSVC 14.29 STL unwraps a sentinel that is one of its own iterators even where the iterator
+// cannot be unwrapped: an as_input_view over a std container, whose sentinel is the container's
+// iterator, cannot feed std algorithms or adaptors there.
+#if defined(_MSVC_STL_UPDATE) && _MSVC_STL_UPDATE <= 202105L
+#define ZR_TEST_STD_OVER_AS_INPUT 0
+#else
+#define ZR_TEST_STD_OVER_AS_INPUT 1
+#endif
+
 // A program-defined view and a program-defined borrowed range, each opted in through the
 // std trait only ([range.view], [range.range]). zr's traits are the std ones, so zr agrees.
 struct UserView {
@@ -229,7 +238,9 @@ TEST(StdInterop, SlicingAndGroupingViewsFeedStdAdaptors) {
     }
     EXPECT_EQ(got, (std::vector<int>{3, 4, 5}));
     EXPECT_EQ(std::ranges::distance(zr::views::iota(0) | zr::views::take(4) | std::views::filter(is_even)), 2);
+#if ZR_TEST_STD_OVER_AS_INPUT
     EXPECT_EQ(std::ranges::distance(a | zr::views::as_input | std::views::filter(is_even)), 2);
+#endif
 
     // take over a non-sized base: std::counted_iterator and the take_view sentinel.
     static_assert(std::ranges::forward_range<decltype(zr::views::filter(a, is_even) | zr::views::take(1))>);

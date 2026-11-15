@@ -366,7 +366,7 @@ Every view, `subrange` and `ranges::to` are usable in constant expressions
 cannot evaluate the views that cache `begin()` (filter, drop, reverse, join, chunk_by) at compile
 time.
 
-Three standard library limits affect only the std interoperability of zr views (zr views
+Four standard library limits affect only the std interoperability of zr views (zr views
 feeding std adaptors); everything else works there:
 
 - Clang before 16 cannot instantiate libstdc++'s range adaptors, and libc++ 15 ships its
@@ -377,6 +377,9 @@ feeding std adaptors); everything else works there:
 - In C++20 `std::tuple` has no `basic_common_reference` (P2321R2, C++23): `zip`, `enumerate`
   and `cartesian_product` iterators whose tuple holds a `const T&` are not
   `std::indirectly_readable`. zr's own concepts accept them (`detail::relaxed_input_iterator`).
+- The MSVC 14.29 STL unwraps a sentinel that is one of its own iterators even when the iterator
+  cannot be unwrapped, so an `as_input_view` over a std container (its sentinel is the
+  container's iterator) cannot feed std algorithms or adaptors there.
 
 ### Unreal Engine
 

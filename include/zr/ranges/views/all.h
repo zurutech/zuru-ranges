@@ -193,8 +193,11 @@ namespace detail {
 
 template <class E>
 concept ref_view_from = requires { ref_view{std::declval<E>()}; };
+// owning_view{E}, spelled with the type its implicit guide deduces: MSVC 14.29 evaluates the
+// class template argument deduction to false inside std::invocable for an rvalue E (the pipe
+// `container() | views::all`, and so every closure object over views::all_t).
 template <class E>
-concept owning_view_from = requires { owning_view{std::declval<E>()}; };
+concept owning_view_from = requires { owning_view<std::remove_reference_t<E>>(std::declval<E>()); };
 
 // [range.all.general]
 struct all_fn : range_adaptor_closure<all_fn> {
