@@ -17,6 +17,73 @@
 #define ZR_FAKE_UE_RANGED_FOR_CHECKS 0
 #endif
 
+#if ZR_FAKE_UE_VERSION >= 508
+// Mirror of UE 5.8's TCheckedPointerIterator: default-constructible and assignable (pointer
+// members), ++/-- both forms, iterator arithmetic, difference, [], ==, < and ->; no value_type,
+// difference_type or iterator_category. operator- makes it a std::input_or_output_iterator, but
+// it is not std::indirectly_readable: std::iterator_traits synthesizes output_iterator_tag.
+template <class ElementType> class TCheckedPointerIterator {
+public:
+    TCheckedPointerIterator() = default;
+
+    TCheckedPointerIterator(ElementType* ptr, const int32& currentNum)
+        : ptr_(ptr)
+        , currentNum_(&currentNum)
+        , initialNum_(currentNum) {}
+
+    ElementType* operator->() const { return ptr_; }
+    ElementType& operator*() const { return *ptr_; }
+    ElementType& operator[](std::ptrdiff_t n) const { return ptr_[n]; }
+
+    TCheckedPointerIterator& operator++() {
+        ++ptr_;
+        return *this;
+    }
+    TCheckedPointerIterator operator++(int) {
+        TCheckedPointerIterator result = *this;
+        ++ptr_;
+        return result;
+    }
+    TCheckedPointerIterator& operator--() {
+        --ptr_;
+        return *this;
+    }
+    TCheckedPointerIterator operator--(int) {
+        TCheckedPointerIterator result = *this;
+        --ptr_;
+        return result;
+    }
+
+    TCheckedPointerIterator operator+(std::ptrdiff_t n) const {
+        TCheckedPointerIterator result = *this;
+        result.ptr_ += n;
+        return result;
+    }
+    TCheckedPointerIterator& operator+=(std::ptrdiff_t n) {
+        ptr_ += n;
+        return *this;
+    }
+    TCheckedPointerIterator operator-(std::ptrdiff_t n) const {
+        TCheckedPointerIterator result = *this;
+        result.ptr_ -= n;
+        return result;
+    }
+    TCheckedPointerIterator& operator-=(std::ptrdiff_t n) {
+        ptr_ -= n;
+        return *this;
+    }
+    std::ptrdiff_t operator-(const TCheckedPointerIterator& rhs) const { return ptr_ - rhs.ptr_; }
+
+    // UE asserts here that the container was not resized mid-iteration (initialNum_ == *currentNum_).
+    bool operator==(const TCheckedPointerIterator& rhs) const { return ptr_ == rhs.ptr_; }
+    bool operator<(const TCheckedPointerIterator& rhs) const { return ptr_ < rhs.ptr_; }
+
+private:
+    ElementType* ptr_ = nullptr;
+    const int32* currentNum_ = nullptr;
+    int32 initialNum_ = 0;
+};
+#else
 // Mirror of UE's TCheckedPointerIterator: dereferenceable, pre-incrementable, != only before UE 5.7
 // (== and -> from 5.7), not default-constructible, and not copy/move-assignable (reference member
 // CurrentNum, as UE); copy/move-constructible. Code that assigns an iterator does not compile
@@ -58,6 +125,7 @@ private:
     const int32& currentNum_; // reference member -> non-assignable, exactly like UE
     int32 initialNum_;
 };
+#endif
 
 template <class InElementType, class AllocatorType> class TArray {
 public:

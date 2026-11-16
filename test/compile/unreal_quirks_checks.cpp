@@ -26,6 +26,7 @@
 
 #include <cstddef>
 #include <functional>
+#include <iterator>
 #include <memory>
 #include <optional>
 #include <type_traits>
@@ -55,7 +56,11 @@ constexpr bool classified_as = range<R> && detail::category_of<R>() == Category 
 static_assert(!std::is_pointer_v<iterator_t<TSortedSet<int>>>);
 static_assert(!std::is_pointer_v<iterator_t<TCompactSet<int>>>);
 static_assert(!std::is_pointer_v<iterator_t<FAnsiString>>);
+#if ZR_FAKE_UE_VERSION >= 508 // the checked iterator is assignable from UE 5.8
+static_assert(std::is_copy_assignable_v<iterator_t<TIndirectArray<int>>>);
+#else
 static_assert(!std::is_copy_assignable_v<iterator_t<TIndirectArray<int>>>);
+#endif
 #else
 static_assert(std::is_pointer_v<iterator_t<TSortedSet<int>>>);
 static_assert(std::is_pointer_v<iterator_t<TCompactSet<int>>>);
@@ -118,6 +123,30 @@ static_assert(std::is_same_v<range_size_t<FPolygon>, std::size_t>);
 #else
 static_assert(classified_as<FPolygon, range_category::bidirectional, false>);
 #endif
+
+// UE 5.8's checked iterator is a std::input_or_output_iterator without value_type, the shape of
+// std's output iterators: only the Unreal one is readable_output_shaped, hence an input iterator.
+using array_iterator = iterator_t<TArray<int>>;
+#if ZR_FAKE_UE_RANGED_FOR_CHECKS && ZR_FAKE_UE_VERSION >= 508
+static_assert(std::input_or_output_iterator<array_iterator> && !std::indirectly_readable<array_iterator>);
+static_assert(detail::readable_output_shaped<array_iterator>::value);
+#else
+static_assert(!detail::readable_output_shaped<array_iterator>::value);
+#endif
+static_assert(detail::relaxed_input_iterator<array_iterator>);
+static_assert(!detail::readable_output_shaped<std::back_insert_iterator<std::vector<int>>>::value);
+static_assert(!detail::relaxed_input_iterator<std::back_insert_iterator<std::vector<int>>>);
+static_assert(!detail::relaxed_input_iterator<std::ostream_iterator<int>>);
+
+// A view over TArray never declares the output_iterator_tag std::iterator_traits synthesizes for
+// the 5.8 checked iterator.
+template <class I>
+concept declares_output_category = requires {
+    typename I::iterator_category;
+    requires std::is_same_v<typename I::iterator_category, std::output_iterator_tag>;
+};
+static_assert(!declares_output_category<iterator_t<filter_view<views::all_t<TArray<int>&>, bool (*)(int)>>>);
+static_assert(!declares_output_category<iterator_t<transform_view<views::all_t<TArray<int>&>, int (*)(int)>>>);
 
 // subrange over non-assignable iterators is still a view in both configurations.
 static_assert(view<subrange<iterator_t<TArray<int>>>>);

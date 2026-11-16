@@ -196,6 +196,13 @@ template <class Reference> struct proxy_value {
     using type = Reference;
 };
 
+// Non-standard: true for a readable iterator that the std concepts take for an output iterator
+// (std::input_or_output_iterator, no value_type: not std::indirectly_readable, and
+// iterator_traits synthesizes output_iterator_tag). UE 5.8's TArray checked iterator; specialized
+// in unreal/ue_range_traits.h. std's own output iterators have the same shape, so this cannot
+// be a concept.
+template <class I> struct readable_output_shaped : std::false_type {};
+
 template <class T> struct iter_value {
     using type = typename proxy_value<std::remove_cvref_t<iter_reference_t<T>>>::type;
 };
@@ -289,13 +296,14 @@ concept declares_input_iterator_concept = requires {
 };
 
 // [iterator.concept.input] input_iterator, relaxed.
-// DEVIATION: also an iterator that is not a std::input_or_output_iterator (Unreal), and, in
-// C++20, a std::input_or_output_iterator with an input iterator_concept, a value type and a
-// tuple or pair reference (a view's proxy; see relaxed_common_reference_with).
+// DEVIATION: also an iterator that is not a std::input_or_output_iterator (Unreal), a
+// readable_output_shaped one (UE 5.8's TArray checked iterator), and, in C++20, a
+// std::input_or_output_iterator with an input iterator_concept, a value type and a tuple or pair
+// reference (a view's proxy; see relaxed_common_reference_with).
 template <class I>
 concept relaxed_input_iterator =
     input_or_output_iterator<I> &&
-    (std::input_iterator<I> || !std::input_or_output_iterator<I> ||
+    (std::input_iterator<I> || !std::input_or_output_iterator<I> || readable_output_shaped<I>::value ||
      (declares_input_iterator_concept<I> && requires { typename std::iter_value_t<I>; } &&
       cxx20_tuple_pair<iter_reference_t<I>, std::iter_value_t<I>>));
 

@@ -96,11 +96,16 @@ concept ue_array_ranged_for_iterator =
     std::same_as<It, typename TArray<E, FDefaultAllocator64>::RangedForIteratorType> ||
     std::same_as<It, typename TArray<E, FDefaultAllocator64>::RangedForConstIteratorType>;
 
-// A type without ElementType iterating TArray's ranged-for iterator: a standard_range in
-// Shipping (T*), not in debug. Contiguous through the checked iterator's operator-> (UE 5.7+),
-// bidirectional before (the checked iterator decrements, for FString).
+// A std range the std adapter lifts (range_traits.h): its iterator is a std::input_iterator.
 template <class R>
-concept ue_array_checked_iterator_range = !has_element_type<R> && !std::ranges::range<R> && range<R> &&
+concept std_input_range = std::ranges::range<R> && std::input_iterator<std::ranges::iterator_t<R>>;
+
+// A type without ElementType iterating TArray's ranged-for iterator: lifted by the std adapter in
+// Shipping (T*), not in debug (the checked iterator is not a std::input_iterator; from UE 5.8 the
+// type is a std::ranges::range all the same). Contiguous through the checked iterator's
+// operator-> (UE 5.7+), bidirectional before (the checked iterator decrements, for FString).
+template <class R>
+concept ue_array_checked_iterator_range = !has_element_type<R> && !std_input_range<R> && range<R> &&
                                           ue_array_ranged_for_iterator<iterator_t<R>, std::remove_cvref_t<range_reference_t<R>>>;
 
 template <class R>
@@ -112,6 +117,14 @@ concept ue_array_checked_iterator = std::is_class_v<It> && ue_array_ranged_for_i
 
 template <class It>
 concept ue_array_debug_iterator = ue_array_checked_iterator<It> && requires(const It& it) { it.operator->(); };
+
+// UE 5.8's checked iterator: operator- gives it a difference_type (std::input_or_output_iterator)
+// but it declares no value_type. The std concepts first: a readable iterator never names TArray<E>.
+template <class It>
+concept ue_array_output_shaped_iterator =
+    std::is_class_v<It> && std::input_or_output_iterator<It> && !std::indirectly_readable<It> && ue_array_checked_iterator<It>;
+
+template <ue_array_output_shaped_iterator It> struct readable_output_shaped<It> : std::true_type {};
 
 } // namespace detail
 

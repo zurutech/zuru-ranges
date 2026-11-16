@@ -82,11 +82,12 @@ concept declares_bidirectional_iterator_concept = requires {
 
 // [iterator.concept.bidir] bidirectional_iterator (see file note): a std iterator models it, or
 // declares it (a view's iterator over an Unreal base, or a C++20 tuple proxy); an Unreal iterator
-// decrements.
+// (or a readable_output_shaped one: UE 5.8's TArray checked iterator) decrements.
 template <class I>
 concept relaxed_bidirectional_iterator =
     relaxed_input_iterator<I> && prefix_decrementable<I> &&
-    (std::bidirectional_iterator<I> || !std::input_or_output_iterator<I> || declares_bidirectional_iterator_concept<I>);
+    (std::bidirectional_iterator<I> || !std::input_or_output_iterator<I> || readable_output_shaped<I>::value ||
+     declares_bidirectional_iterator_concept<I>);
 
 // A bidirectional_range the right folds accept: by position, or through its iterator.
 template <class R>
