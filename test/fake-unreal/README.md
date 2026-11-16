@@ -16,10 +16,11 @@ implemented on top of the C++ standard library. They:
 | Quirk                                                   | Where                         | Forces                          |
 |---------------------------------------------------------|-------------------------------|---------------------------------|
 | `Num()` returns signed `int32`, not `size_t`            | all containers                | `range_traits<>::size` typing   |
-| Container iterators are **not default-constructible**   | `TCheckedPointerIterator`, `TFakeContainerIterator` | dropping `semiregular` from `sentinel_for` |
+| Container iterators are **not default-constructible**   | `TCheckedPointerIterator` (before 5.8), `TFakeContainerIterator` | dropping `semiregular` from `sentinel_for` |
 | Iterators support **only `!=`** (no `==`)               | same (`TCheckedPointerIterator` before 5.7) | `weakly_inequality_testable_with` relaxation |
 | `TArray` ranged-for iterator **type changes between debug and shipping** | `ZR_FAKE_UE_RANGED_FOR_CHECKS` | semantic `range_traits<>` instead of iterator-tag deduction |
-| `TArray` debug iterator is copy-constructible but **not copy/move-assignable** (reference member `CurrentNum`, as UE) | `TCheckedPointerIterator` | views emplace iterators and never assign them |
+| `TArray` debug iterator is copy-constructible but **not copy/move-assignable** (reference member `CurrentNum`, as UE before 5.8) | `TCheckedPointerIterator` | views emplace iterators and never assign them |
+| `TArray` debug iterator (5.8) is a `std::input_or_output_iterator` with **no `value_type`**: std reads it as an output iterator | `TCheckedPointerIterator` | `detail::readable_output_shaped` hook (input iterator, no synthesized `iterator_category` in views) |
 | `TSortedMap` **inherits the backing array's iterator**: raw pointer in Shipping (looks contiguous), checked class in debug, but semantically forward | `Containers/SortedMap.h` | trait must override the iterator; tests must pass identically in both configurations |
 | Contiguous access via `GetData()`, not `data()`         | `TArray`, `FString`           | `range_traits<>::data` customization |
 | String is contiguous via `GetCharArray().GetData()`     | `FString`                     | `range_traits<FString>`         |
@@ -55,7 +56,7 @@ Not faked: `TList` and `TCircularBuffer`. Neither has `begin`/`end`, so neither 
 
 ## Engine version
 
-`ZR_FAKE_UE_VERSION` (100 * major + minor, 503 to 507, default 507) selects the engine shape
+`ZR_FAKE_UE_VERSION` (100 * major + minor, 503 to 508, default 507) selects the engine shape
 where versions differ and neither shape is a subset of the other; a shape that is stricter in
 one version and works unchanged in the other needs no gate.
 
@@ -63,8 +64,9 @@ one version and works unchanged in the other needs no gate.
 |---|---|---|
 | 5.4 | `TBitArray` has `begin`/`end` (a range) | `Containers/BitArray.h` |
 | 5.7 | `TCheckedPointerIterator` has `==` and `operator->` | `Containers/Array.h` |
+| 5.8 | `TCheckedPointerIterator` is default-constructible and assignable, with postfix `++`/`--`, arithmetic, `-`, `[]` and `<`, and still no `value_type`: a `std::input_or_output_iterator` that is not `std::indirectly_readable` (`std::iterator_traits` gives it `output_iterator_tag`) | `Containers/Array.h` |
 
-CI builds the debug configuration again with `ZR_FAKE_UE_VERSION=503`. zr never reads the
+CI builds the debug configuration again with `ZR_FAKE_UE_VERSION=503` and with `508`. zr never reads the
 version: it detects each shape (concepts, `ue_range_traits.h`).
 
 ## The debug/shipping switch

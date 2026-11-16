@@ -30,7 +30,9 @@
  * goes through ranges::element_at.
  *
  * DEVIATION (all view iterators): iterator_category is declared only if
- * iterator_traits<iterator_t<Base>>::iterator_category is valid (Unreal iterators have none).
+ * iterator_traits<iterator_t<Base>>::iterator_category is valid (Unreal iterators have none) and
+ * iterator_t<Base> is not readable_output_shaped (its synthesized output_iterator_tag would
+ * misstate the category: UE 5.8's TArray checked iterator).
  *
  * DEVIATION (take_view, zip_view, reverse_view): over a base that range_traits classify random
  * access and sized while its iterator only increments (index_iterable), the view iterates with
@@ -202,7 +204,7 @@ inline constexpr indexed_begin_fn indexed_begin{};
 inline constexpr indexed_end_fn indexed_end{};
 
 template <class I>
-concept has_cpp17_category = requires { typename std::iterator_traits<I>::iterator_category; };
+concept has_cpp17_category = requires { typename std::iterator_traits<I>::iterator_category; } && !readable_output_shaped<I>::value;
 
 template <class I> using cpp17_category_t = typename std::iterator_traits<I>::iterator_category;
 

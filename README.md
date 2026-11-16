@@ -322,9 +322,10 @@ CMake options: `-DZR_WARNINGS_AS_ERRORS=ON`, `-DZR_ENABLE_SANITIZERS=ON` (ASan +
 
 Compile-time checks (`static_assert`) are in `test/compile/`, built but not run; runtime tests
 are in `test/ranges/`, `test/iterator/` and `test/algorithm/` (GoogleTest); every header is
-also compiled on its own. Each test is built three times: against the raw-pointer (shipping)
+also compiled on its own. Each test is built four times: against the raw-pointer (shipping)
 and the checked-class (debug, `ZR_FAKE_UE_RANGED_FOR_CHECKS`) Unreal iterator, and debug
-against the UE 5.3 mocks (`ZR_FAKE_UE_VERSION=503`, `test/fake-unreal/README.md`). CI covers
+against the UE 5.3 and the UE 5.8 mocks (`ZR_FAKE_UE_VERSION=503`, `508`,
+`test/fake-unreal/README.md`). CI covers
 the matrix in [Requirements](#requirements), plus C++23, ASan/UBSan (Clang 20 with libc++, GCC 16),
 libFuzzer (Clang 20), module mode, the CMake 3.21 floor, and consumers through
 `find_package` and `FetchContent` (`.github/workflows`).

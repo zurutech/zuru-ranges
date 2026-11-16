@@ -22,9 +22,11 @@ struct Person {
 };
 
 // The TArray debug iterator is copy-constructible but not copy-assignable (reference
-// member), exactly like UE. In shipping it is a raw pointer (assignable).
+// member) before UE 5.8, exactly like UE. In shipping it is a raw pointer (assignable).
 using ArrIt = TArray<int>::RangedForIteratorType;
-#if ZR_FAKE_UE_RANGED_FOR_CHECKS
+#if ZR_FAKE_UE_RANGED_FOR_CHECKS && ZR_FAKE_UE_VERSION >= 508
+static_assert(std::is_copy_assignable_v<ArrIt>); // pointer members
+#elif ZR_FAKE_UE_RANGED_FOR_CHECKS
 static_assert(std::is_copy_constructible_v<ArrIt> && !std::is_copy_assignable_v<ArrIt>);
 #else
 static_assert(std::is_copy_assignable_v<ArrIt>); // raw pointer

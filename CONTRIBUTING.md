@@ -117,8 +117,8 @@ exhaustive.
 - An Unreal quirk: the fake that reproduces it in `test/fake-unreal/` (documented in its
   README), and a test that passes under both iterator configurations.
 
-Each test file is built three times (shipping and debug iterators, and debug against the UE
-5.3 mocks) and every header once on its own; nothing opts in. Before asking for review run
+Each test file is built four times (shipping and debug iterators, and debug against the UE
+5.3 and 5.8 mocks) and every header once on its own; nothing opts in. Before asking for review run
 `scripts/make.sh -W`; `-s` adds the sanitizers, `-c clang++ --libcxx` the other standard
 library, `-m` the module build (README, Building the tests).
 

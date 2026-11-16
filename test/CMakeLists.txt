@@ -48,9 +48,10 @@ target_include_directories(fake_unreal INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/fak
 
 include(GoogleTest)
 
-# Each test target is built three times: shipping (raw-pointer UE iterators), debug
-# (checked-class iterators) and debug against the UE 5.3 to 5.6 mocks (fake-unreal/README.md).
-set(ZR_CONFIGS shipping debug debug_ue503)
+# Each test target is built four times: shipping (raw-pointer UE iterators), debug
+# (checked-class iterators), and debug against the UE 5.3 to 5.6 and the UE 5.8 mocks
+# (fake-unreal/README.md).
+set(ZR_CONFIGS shipping debug debug_ue503 debug_ue508)
 
 # Compile definitions of a test target for one entry of ZR_CONFIGS.
 function(zr_config_definitions target config)
@@ -59,6 +60,8 @@ function(zr_config_definitions target config)
     endif()
     if(config STREQUAL debug_ue503)
         target_compile_definitions(${target} PRIVATE ZR_FAKE_UE_VERSION=503)
+    elseif(config STREQUAL debug_ue508)
+        target_compile_definitions(${target} PRIVATE ZR_FAKE_UE_VERSION=508)
     endif()
 endfunction()
 
