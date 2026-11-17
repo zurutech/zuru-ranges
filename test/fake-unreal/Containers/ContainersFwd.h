@@ -8,6 +8,7 @@
 #include <type_traits>
 
 template <class InElementType, class AllocatorType = FDefaultAllocator> class TArray;
+template <class InElementType> using TArray64 = TArray<InElementType, FDefaultAllocator64>;
 template <class InElementType, class SizeType = int32> class TArrayView;
 template <class InElementType, class KeyFuncs = void, class Allocator = FDefaultSetAllocator> class TSet;
 template <class InElementType, class KeyFuncs = void, class Allocator = FDefaultSetAllocator> class TSparseSet;

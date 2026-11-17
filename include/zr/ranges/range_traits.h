@@ -124,4 +124,14 @@ concept random_access_via_traits = has_range_traits<T> && range_traits<T>::categ
 template <class T>
 concept contiguous_via_traits = has_range_traits<T> && range_traits<T>::category >= range_category::contiguous;
 
+namespace detail {
+
+// DEVIATION: opt-in to the deduction fallback of ranges::to<C>() (to.h), for a container
+// template with neither the constructors nor the deduction guides DEDUCE_EXPR reads.
+// Specialized on the specialization C<...>, which is named and never instantiated.
+template <class C> inline constexpr bool deduce_from_value = false;      // C<range_value_t<R>>
+template <class C> inline constexpr bool deduce_from_key_mapped = false; // C<K, M>, of a pair-like value type
+
+} // namespace detail
+
 ZR_END_NAMESPACE_RANGES

@@ -55,6 +55,12 @@ recurring ones:
   with the structured-binding tuple protocol ([dcl.struct.bind]): Unreal's `TPair`/`TTuple`.
 - `take_view` uses `std::counted_iterator` for std iterators and an equivalent without
   iterator arithmetic for forward Unreal ones (`TSet`, `TMap`).
+- `ranges::to<C>()` deduces an Unreal container template (`to<TArray>()`, `to<TMap>()`) from
+  the value type of the range, after the three bullets of `DEDUCE_EXPR`
+  ([range.utility.conv.to]) and without constructor arguments: Unreal containers declare
+  neither the constructors nor the deduction guides the bullets read. The one deviation that
+  adds a capability: such a call does not compile against `std::ranges::to`
+  ([Unreal containers](#unreal-containers)).
 - MSVC (cl.exe) and GCC 11 keep the pre-P2602 poison pills in `ranges::begin`/`end`: a type
   whose ADL `begin`/`end` take only `const T&` is not a range there (a toolchain bug).
 
@@ -288,6 +294,30 @@ with `A != uint32(-1)` warns on every instantiation, in user code and the trait 
 `ranges::to` fills Unreal containers through their own API: `Add(Key, Value)` for pair-like
 elements (`TPair`, `std::pair`, a `zip` element) into `TMap`/`TMultiMap`/`TSortedMap`, then
 `Add`, `Emplace`, `PushLast` (`TDeque`), `AppendChar` (strings), reserving with `Reserve`.
+
+`ranges::to` also deduces the arguments of an Unreal template, which `DEDUCE_EXPR` cannot (no
+Unreal container is constructible from `from_range` or an iterator pair, and only the sets
+have a deduction guide from a range, from UE 5.5 and from a contiguous Unreal container):
+
+```cpp
+Src | ranges::to<TArray>()                     // TArray<int>, also from a std range or a view
+views::zip(Keys, Values) | ranges::to<TMap>()  // TMap<K, M>
+StdMap | ranges::to<TSortedMap>()              // TSortedMap<K, M>, from pair<const K, M>
+StdMap | ranges::to<TArray>()                  // TArray<std::pair<const K, M>>, as std::vector
+```
+
+| Deduced | Containers |
+|---|---|
+| `C<range_value_t<R>>` | `TArray` (and `TArray64`), `TSet`, `TSparseSet`, `TCompactSet`, `TSortedSet`, `TDeque`, `TRingBuffer`, `TSparseArray` |
+| `C<K, M>`, the value type being pair-like (`TPair`, `std::pair`, a `zip` element) | `TMap`, `TMultiMap`, `TSparseMap`, `TCompactMap`, `TSparseMultiMap`, `TCompactMultiMap`, `TSortedMap` |
+
+Where Epic declares a constructor or a guide, it deduces instead and names the same type
+(`to<TSet>()` of a `TArray` from UE 5.5). The views (`TArrayView`, `TStridedView`,
+`TStringView`), `TIndirectArray`, `TDoubleLinkedList` and `TBitArray` are not deduced, nor
+`TStaticArray` and `TChunkedArray`, whose non-type parameters `to`'s template parameter does
+not accept; name the type (`to<TChunkedArray<int>>()`). `to<TSet>()` of a range of
+`std::pair` fails inside Unreal's hashing (`std::pair` has no `GetTypeHash`), as
+`to<TSet<std::pair<K, M>>>()` does; `TPair` works.
 
 **Not supported: `TList` and `TCircularBuffer`.** A range is a type on which `ranges::begin`
 and `ranges::end` are valid ([range.range]); neither has `begin`/`end`. `TList` is a bare

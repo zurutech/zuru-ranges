@@ -5,6 +5,7 @@
 #include "Containers/ContainersFwd.h"
 
 #include <algorithm>
+#include <concepts>
 #include <cstddef>
 #include <initializer_list>
 #include <memory>
@@ -237,6 +238,16 @@ public:
     TArrayView(ElementType* data, SizeType count)
         : data_(data)
         , num_(count) {}
+
+    // Implicit, from a contiguous Unreal container of a compatible element type, as UE's.
+    template <class OtherRangeType>
+        requires requires(OtherRangeType& other) {
+            { other.GetData() } -> std::convertible_to<ElementType*>;
+            { other.Num() } -> std::convertible_to<SizeType>;
+        }
+    TArrayView(OtherRangeType&& other)
+        : data_(other.GetData())
+        , num_(static_cast<SizeType>(other.Num())) {}
 
     SizeType Num() const { return num_; }
     ElementType* GetData() const { return data_; }
