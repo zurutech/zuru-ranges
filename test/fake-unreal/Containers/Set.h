@@ -26,8 +26,8 @@ public:
         }
     }
     // The only constructor from a range: a contiguous Unreal container converts to the view.
-    explicit TSet(TArrayView<const ElementType> view) {
-        for (const ElementType& element : view) {
+    explicit TSet(TArrayView<const ElementType> arrayView) {
+        for (const ElementType& element : arrayView) {
             Add(element);
         }
     }

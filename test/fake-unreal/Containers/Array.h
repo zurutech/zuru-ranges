@@ -150,6 +150,14 @@ public:
         }
     }
 
+    // Unconstrained, as UE's: is_constructible holds from any TArrayView, whatever its element.
+    template <class OtherElementType, class OtherSizeType> explicit TArray(const TArrayView<OtherElementType, OtherSizeType>& other) {
+        Reserve(static_cast<int32>(other.Num()));
+        for (const OtherElementType& element : other) {
+            Add(ElementType(element));
+        }
+    }
+
     TArray(const TArray& other) {
         Reserve(other.num_);
         for (int32 i = 0; i < other.num_; ++i) {

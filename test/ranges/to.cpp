@@ -230,6 +230,20 @@ TEST(RangesTo, UnrealSetFromAnUnrealArrayInEveryEngineVersion) {
     EXPECT_EQ(set.Num(), 2);
 }
 
+// TArray is constructible from any TArrayView, the TArray<TArrayView<int>> cl.exe deduces included.
+TEST(RangesTo, UnrealArrayTemplateFromAnArrayView) {
+    TArray<int> src{4, 5, 6};
+    TArrayView<int> ints(src);
+    auto array = ints | zr::ranges::to<TArray>();
+    static_assert(std::is_same_v<decltype(array), TArray<int>>);
+    ASSERT_EQ(array.Num(), 3);
+    EXPECT_EQ(array[2], 6);
+
+    auto set = TConstArrayView<int>(src) | zr::ranges::to<TSet>();
+    static_assert(std::is_same_v<decltype(set), TSet<int>>);
+    EXPECT_EQ(set.Num(), 3);
+}
+
 TEST(RangesTo, StringsByAppendChar) {
     FString lower(TEXT("abc"));
     FString upper = lower | views::transform([](TCHAR c) { return static_cast<TCHAR>(c - TEXT('a') + TEXT('A')); }) | zr::ranges::to<FString>();

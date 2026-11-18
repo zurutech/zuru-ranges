@@ -239,19 +239,23 @@ template <class R> struct to_input_iterator {
 };
 
 // MSVC (cl.exe, through 19.44) deduces C(a...) as C{a...} when C declares no deduction guide:
-// through an initializer_list constructor (TArray's), to C<R> from a range and to
-// C<input-iterator> from an iterator pair. The type deduced is then not constructible from a....
+// through an initializer_list constructor (TArray's), to C<decay_t<A>>: C<R> from a range,
+// C<input-iterator> from an iterator pair. Not constructible from a... as a rule, but
+// TArray<TArrayView<T>> is from a TArrayView<T> (TArray's constructor template takes any
+// TArrayView): the type itself is rejected too.
 #if defined(_MSC_VER) && !defined(__clang__)
-template <class D, class... A>
-concept deduction_constructs = std::constructible_from<D, A...>;
+template <template <class...> class C, class D, class A>
+concept deduced_through_braces = requires { typename C<std::decay_t<A>>; } && std::same_as<D, C<std::decay_t<A>>>;
+template <template <class...> class C, class D, class A, class... Rest>
+concept deduction_constructs = std::constructible_from<D, A, Rest...> && !deduced_through_braces<C, D, A>;
 #else
-template <class D, class... A>
+template <template <class...> class C, class D, class A, class... Rest>
 concept deduction_constructs = true;
 #endif
 
 template <template <class...> class C, class R, class... Args>
 concept deduce_from_range = requires { C(std::declval<R>(), std::declval<Args>()...); } &&
-                            deduction_constructs<decltype(C(std::declval<R>(), std::declval<Args>()...)), R, Args...>;
+                            deduction_constructs<C, decltype(C(std::declval<R>(), std::declval<Args>()...)), R, Args...>;
 #if defined(__cpp_lib_containers_ranges)
 template <template <class...> class C, class R, class... Args>
 concept deduce_from_range_t = requires { C(std::from_range, std::declval<R>(), std::declval<Args>()...); };
@@ -259,7 +263,7 @@ concept deduce_from_range_t = requires { C(std::from_range, std::declval<R>(), s
 template <template <class...> class C, class R, class... Args>
 concept deduce_from_iterators =
     requires { C(std::declval<to_input_iterator<R>>(), std::declval<to_input_iterator<R>>(), std::declval<Args>()...); } &&
-    deduction_constructs<decltype(C(std::declval<to_input_iterator<R>>(), std::declval<to_input_iterator<R>>(), std::declval<Args>()...)),
+    deduction_constructs<C, decltype(C(std::declval<to_input_iterator<R>>(), std::declval<to_input_iterator<R>>(), std::declval<Args>()...)),
                          to_input_iterator<R>, to_input_iterator<R>, Args...>;
 
 // DEVIATION: a fallback after the three bullets of DEDUCE_EXPR, for a container that opts in

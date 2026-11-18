@@ -236,6 +236,10 @@ static_assert(!detail::deducible_to<TMap, std_ints>);
 static_assert(std::is_same_v<deduced_to<TArray, TArray64<int>&>, TArray64<int>>);
 static_assert(std::is_same_v<deduced_to<TSet, TArray<int>&>, TSet<int>>);
 static_assert(!detail::deducible_to<TArray, std_ints, int>);
+// TArray is constructible from any TArrayView: so is the TArray<TArrayView<int>> cl.exe deduces
+// through the initializer_list constructor.
+static_assert(std::is_same_v<deduced_to<TArray, TArrayView<int>&>, TArray<int>>);
+static_assert(std::is_same_v<deduced_to<TArray, TConstArrayView<int>>, TArray<int>>);
 // Not opted in: views, TIndirectArray (owns pointers), TDoubleLinkedList (no Add), TBitArray
 // (its only parameter is the allocator).
 static_assert(!detail::deducible_to<TArrayView, std_ints> && !detail::deducible_to<TStridedView, std_ints>);
