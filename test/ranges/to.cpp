@@ -6,6 +6,7 @@
 #include "Containers/SortedMap.h"
 
 #include "zr/ranges/to.h"
+#include "zr/ranges/views/as_rvalue_view.h"
 #include "zr/ranges/views/filter_view.h"
 #include "zr/ranges/views/transform_view.h"
 #include "zr/ranges/views/zip_view.h"
@@ -264,6 +265,17 @@ TEST(RangesTo, PrvaluePairsMoveIntoUnrealMap) {
         sum += key + *value;
     }
     EXPECT_EQ(sum, 33);
+}
+
+// A zip element under as_rvalue is a tuple of rvalue references: Add(Key, Value) moves both.
+TEST(RangesTo, RvalueReferencePairsMoveIntoUnrealMap) {
+    TArray<FString> keys{FString(TEXT("a")), FString(TEXT("b"))};
+    TArray<TArray<int>> values{TArray<int>{1}, TArray<int>{2, 3}};
+    auto entities = views::zip(keys, values) | views::as_rvalue | zr::ranges::to<TMap>();
+    static_assert(std::is_same_v<decltype(entities), TMap<FString, TArray<int>>>);
+    ASSERT_EQ(entities.Num(), 2);
+    EXPECT_EQ(keys[0].Len(), 0);
+    EXPECT_EQ(values[1].Num(), 0);
 }
 
 TEST(RangesTo, ChunkedArrayAppendsThroughAddElement) {

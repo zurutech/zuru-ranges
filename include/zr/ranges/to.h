@@ -39,18 +39,19 @@ template <class T>
 concept pair_like = requires { std::tuple_size<std::remove_cvref_t<T>>::value; } && std::tuple_size<std::remove_cvref_t<T>>::value == 2;
 
 // Element I of a pair-like `ref`, forwarded as std::get<I>(std::forward<Ref>(ref)) would be:
-// a reference element stays an lvalue, an object element of an rvalue is moved.
+// an lvalue reference element stays an lvalue; of an rvalue, an object element and an rvalue
+// reference element (as_rvalue over zip) are moved.
 template <std::size_t I, class Ref> constexpr decltype(auto) pair_element(Ref&& ref) {
     using E = std::tuple_element_t<I, std::remove_cvref_t<Ref>>;
     auto& [first, second] = ref;
     if constexpr (I == 0) {
-        if constexpr (std::is_lvalue_reference_v<Ref> || std::is_reference_v<E>) {
+        if constexpr (std::is_lvalue_reference_v<Ref> || std::is_lvalue_reference_v<E>) {
             return (first);
         } else {
             return std::move(first);
         }
     } else {
-        if constexpr (std::is_lvalue_reference_v<Ref> || std::is_reference_v<E>) {
+        if constexpr (std::is_lvalue_reference_v<Ref> || std::is_lvalue_reference_v<E>) {
             return (second);
         } else {
             return std::move(second);
