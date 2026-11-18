@@ -202,21 +202,12 @@ public:
         max_ = newMax;
     }
 
-    void Add(const ElementType& element) {
-        Insert(element, num_);
-    }
+    // UE: Add and Insert take const& and &&.
+    void Add(const ElementType& element) { InsertValue_(ElementType(element), num_); }
+    void Add(ElementType&& element) { InsertValue_(std::move(element), num_); }
 
-    void Insert(const ElementType& element, int32 index) {
-        ElementType value(element); // may alias an element moved by Reserve
-        if (num_ == max_) {
-            Reserve(max_ ? 2 * max_ : 4);
-        }
-        for (int32 i = num_; i > index; --i) {
-            data_[static_cast<std::size_t>(i)] = std::move(data_[static_cast<std::size_t>(i - 1)]);
-        }
-        data_[static_cast<std::size_t>(index)] = std::move(value);
-        ++num_;
-    }
+    void Insert(const ElementType& element, int32 index) { InsertValue_(ElementType(element), index); }
+    void Insert(ElementType&& element, int32 index) { InsertValue_(std::move(element), index); }
 
 #if ZR_FAKE_UE_RANGED_FOR_CHECKS
     RangedForIteratorType begin() { return {GetData(), num_}; }
@@ -231,6 +222,18 @@ public:
 #endif
 
 private:
+    // By value: the argument may alias an element moved by Reserve.
+    void InsertValue_(ElementType value, int32 index) {
+        if (num_ == max_) {
+            Reserve(max_ ? 2 * max_ : 4);
+        }
+        for (int32 i = num_; i > index; --i) {
+            data_[static_cast<std::size_t>(i)] = std::move(data_[static_cast<std::size_t>(i - 1)]);
+        }
+        data_[static_cast<std::size_t>(index)] = std::move(value);
+        ++num_;
+    }
+
     // Not std::vector: vector<bool> would make TArray<bool> a bit-proxy container.
     std::unique_ptr<ElementType[]> data_;
     int32 num_{};

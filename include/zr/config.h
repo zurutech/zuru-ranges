@@ -37,7 +37,7 @@
     } \
     }
 
-// [[no_unique_address]]: the MSVC ABI (_MSC_VER: cl, clang-cl) ignores it and needs
+// [[no_unique_address]]: the Microsoft ABI (_MSC_VER: cl, clang-cl) ignores it and needs
 // [[msvc::no_unique_address]]; keyed on the ABI, not _WIN32 (MinGW is Itanium ABI).
 // clang-cl < 18 has neither form: layouts differ from cl's, do not mix the two across an ABI
 // boundary.

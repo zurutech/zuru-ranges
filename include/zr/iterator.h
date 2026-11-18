@@ -6,11 +6,13 @@
  * @file iterator.h
  *
  * @brief Umbrella of the iterator library parts (mirrors [iterator.synopsis]: [iterator.concepts],
- *        [indirectcallable], [alg.req], [range.iter.ops], [const.iterators], [counted.iterator]).
+ *        [indirectcallable], [alg.req], [range.iter.ops], [const.iterators], [move.iterators],
+ *        [counted.iterator]).
  */
 
 #include "zr/iterator/concepts.h"
 #include "zr/iterator/const_iterator.h"
 #include "zr/iterator/counted_iterator.h"
 #include "zr/iterator/indirect_requirements.h"
+#include "zr/iterator/move_iterator.h"
 #include "zr/iterator/operations.h"

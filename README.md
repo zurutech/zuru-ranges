@@ -54,7 +54,8 @@ recurring ones:
 - `elements_view` accepts, besides *tuple-like* types ([tuple.like], a closed set), any type
   with the structured-binding tuple protocol ([dcl.struct.bind]): Unreal's `TPair`/`TTuple`.
 - `take_view` uses `std::counted_iterator` for std iterators and an equivalent without
-  iterator arithmetic for forward Unreal ones (`TSet`, `TMap`).
+  iterator arithmetic for forward Unreal ones (`TSet`, `TMap`); `as_rvalue_view` likewise
+  `std::move_iterator` and `std::move_sentinel`, and their equivalents for Unreal iterators.
 - `ranges::to<C>()` deduces an Unreal container template (`to<TArray>()`, `to<TMap>()`) from
   the value type of the range, after the three bullets of `DEDUCE_EXPR`
   ([range.utility.conv.to]) and without constructor arguments: Unreal containers declare
@@ -115,6 +116,7 @@ The standard specifies view objects in two kinds:
 | Range adaptor closure | `views::elements<N>`, `views::keys`, `views::values` | `elements_view`, `keys_view`, `values_view` | [range.elements] | `views/elements_view.h` |
 | Range adaptor closure | `views::enumerate` | `enumerate_view` | [range.enumerate] (C++23) | `views/enumerate_view.h` |
 | Range adaptor | `views::chunk_by` | `chunk_by_view` | [range.chunk.by] (C++23) | `views/chunk_by_view.h` |
+| Range adaptor closure | `views::as_rvalue` | `as_rvalue_view` | [range.as.rvalue] (C++23) | `views/as_rvalue_view.h` |
 | Range adaptor closure | `views::as_input` | `as_input_view` | [range.as.input] (C++26) | `views/as_input_view.h` |
 | Range adaptor closure | `views::maybe` | `filter` + `transform` | non-standard, after P1255R14 | `views/maybe_view.h` |
 | Customization point object | `views::zip` | `zip_view` | [range.zip] (C++23) | `views/zip_view.h` |
@@ -154,6 +156,7 @@ The standard specifies view objects in two kinds:
 | `ranges::distance` | [range.iter.op.distance] | `iterator/operations.h` |
 | `basic_const_iterator`, `const_iterator`, `const_sentinel`, `iter_const_reference_t` | [const.iterators] | `iterator/const_iterator.h` |
 | `counted_iterator` (`std::counted_iterator` or the Unreal equivalent; exposition-only) | [counted.iterator] | `iterator/counted_iterator.h` |
+| `move_iterator`, `move_sentinel` (`std::move_iterator`, `std::move_sentinel` or the Unreal equivalents; exposition-only) | [move.iterators], [move.sentinel] | `iterator/move_iterator.h` |
 
 ### Algorithms
 
@@ -294,6 +297,8 @@ with `A != uint32(-1)` warns on every instantiation, in user code and the trait 
 `ranges::to` fills Unreal containers through their own API: `Add(Key, Value)` for pair-like
 elements (`TPair`, `std::pair`, a `zip` element) into `TMap`/`TMultiMap`/`TSortedMap`, then
 `Add`, `Emplace`, `PushLast` (`TDeque`), `AppendChar` (strings), reserving with `Reserve`.
+Elements are forwarded, so under `views::as_rvalue` they are moved (`Add(ElementType&&)`,
+`Add(KeyType&&, ValueType&&)`).
 
 `ranges::to` also deduces the arguments of an Unreal template, which `DEDUCE_EXPR` cannot (no
 Unreal container is constructible from `from_range` or an iterator pair, and only the sets
@@ -302,6 +307,7 @@ have a deduction guide from a range, from UE 5.5 and from a contiguous Unreal co
 ```cpp
 Src | ranges::to<TArray>()                     // TArray<int>, also from a std range or a view
 views::zip(Keys, Values) | ranges::to<TMap>()  // TMap<K, M>
+views::zip(Keys, Values) | views::as_rvalue | ranges::to<TMap>()  // the same, moving keys and values
 StdMap | ranges::to<TSortedMap>()              // TSortedMap<K, M>, from pair<const K, M>
 StdMap | ranges::to<TArray>()                  // TArray<std::pair<const K, M>>, as std::vector
 ```
@@ -397,7 +403,7 @@ Every view, `subrange` and `ranges::to` are usable in constant expressions
 cannot evaluate the views that cache `begin()` (filter, drop, reverse, join, chunk_by) at compile
 time.
 
-Four standard library limits affect only the std interoperability of zr views (zr views
+Five standard library limits affect only the std interoperability of zr views (zr views
 feeding std adaptors); everything else works there:
 
 - Clang before 16 cannot instantiate libstdc++'s range adaptors, and libc++ 15 ships its
@@ -411,6 +417,9 @@ feeding std adaptors); everything else works there:
 - The MSVC 14.29 STL unwraps a sentinel that is one of its own iterators even when the iterator
   cannot be unwrapped, so an `as_input_view` over a std container (its sentinel is the
   container's iterator) cannot feed std algorithms or adaptors there.
+- Before P2520R0 (`__cpp_lib_move_iterator_concept`: libstdc++ 13, libc++ 17)
+  `std::move_iterator` is an input iterator whatever it wraps, so an `as_rvalue_view` over a std
+  range is only a `std::ranges::input_range` there. zr's own concepts read `range_traits`.
 
 ### Unreal Engine
 

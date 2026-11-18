@@ -71,19 +71,22 @@ int main() {
     auto vs = zr::views::zip(arr, arr) | zr::views::values;
     auto el = zr::views::zip(arr, arr) | zr::views::elements<1>;
     auto inp = arr | zr::views::as_input;
+    auto rvl = arr | zr::views::as_rvalue;
     zr::ranges::take_view<zr::ranges::ref_view<int[5]>>* tkp = &tk;
     zr::ranges::drop_view<zr::ranges::ref_view<int[5]>>* drp = &dr;
     zr::ranges::as_input_view<zr::ranges::ref_view<int[5]>>* inpp = &inp;
-    (void)tkp; (void)drp; (void)inpp;
+    zr::ranges::as_rvalue_view<zr::ranges::ref_view<int[5]>>* rvlp = &rvl;
+    (void)tkp; (void)drp; (void)inpp; (void)rvlp;
     static_assert(sizeof(zr::ranges::chunk_by_view<zr::ranges::ref_view<int[5]>, bool (*)(int, int)>) > 0);
     static_assert(sizeof(zr::ranges::keys_view<decltype(zr::views::zip(arr, arr))>) > 0);
     static_assert(sizeof(zr::ranges::values_view<decltype(zr::views::zip(arr, arr))>) > 0);
     static_assert(sizeof(zr::ranges::elements_view<decltype(zr::views::zip(arr, arr)), 0>) > 0);
 
     int sum = 0;
-    // rev's iterator is std::reverse_iterator<int*>: its non-member comparisons belong to
-    // <iterator>, not reachable here, so only members are used.
+    // rev's iterator is std::reverse_iterator<int*>, rvl's std::move_iterator<int*>: their
+    // non-member comparisons belong to <iterator>, not reachable here, so only members are used.
     for (long i = 0; i < 5; ++i) sum += rev[i];
+    for (long i = 0; i < 5; ++i) sum += rvl[i];
     for (int x : flt) sum += x;
     for (int x : trn) sum += x;
     for (int x : may) sum += x;

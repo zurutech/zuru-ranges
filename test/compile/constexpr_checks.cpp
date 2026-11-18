@@ -134,6 +134,13 @@ constexpr bool as_input_cx() {
 }
 static_assert(as_input_cx());
 
+constexpr bool as_rvalue_cx() {
+    std::array<int, 3> a{1, 2, 3};
+    auto rv = a | v::as_rvalue;
+    return sum(rv) == 6 && rv.size() == 3 && rv[1] == 2 && sum(rv | v::take(2)) == 3;
+}
+static_assert(as_rvalue_cx());
+
 constexpr bool elements_cx() {
     std::array<std::pair<int, int>, 2> p{{{1, 10}, {2, 20}}};
     return sum(p | v::keys) == 3 && sum(p | v::values) == 30;
