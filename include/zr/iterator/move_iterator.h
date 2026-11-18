@@ -123,9 +123,12 @@ public:
         return detail::iter_equal(x.current_, y.base());
     }
 
+    // The return type names I and I2, not x.base(): the class is incomplete here, and Clang
+    // before 19 rejects the member access when it instantiates the class.
     template <class I2>
         requires std::sized_sentinel_for<I, I2>
-    friend constexpr auto operator-(const relaxed_move_iterator& x, const relaxed_move_iterator<I2>& y) -> decltype(x.base() - y.base()) {
+    friend constexpr auto operator-(const relaxed_move_iterator& x, const relaxed_move_iterator<I2>& y)
+        -> decltype(std::declval<const I&>() - std::declval<const I2&>()) {
         return x.current_ - y.base();
     }
 
