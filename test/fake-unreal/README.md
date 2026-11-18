@@ -43,13 +43,17 @@ implemented on top of the C++ standard library. They:
 | `TChunkedArray::Add(int32 Count)` appends `Count` default elements; elements are appended with `AddElement` | `Containers/ChunkedArray.h` | `ranges::to` tries `AddElement` before `Add` |
 | `TSet`/`TMap` have named storages: `TSparseSet`/`TSparseMap`/`TSparseMultiMap` and `TCompactSet`/`TCompactMap`/`TCompactMultiMap` (UE 5.7) | `Containers/Set.h`, `Map.h`, `CompactSet.h` | one trait per type |
 | Every container has `Reserve` (as UE), so `ranges::to` reserves through it | all containers | `ranges::to`'s reserve branch |
+| **No** constructor from `from_range` or an iterator pair, and no deduction guide from a range but `TSet`'s (UE 5.5), which reads `RangeType::ElementType` and constructs through `TArrayView<const T>`, to which a contiguous Unreal container converts | all containers; `Containers/Set.h`, `Array.h`, `Traits/ElementType.h` | `ranges::to<C>()`'s deduction fallback; the guide and the fallback name one type |
+| An `initializer_list` constructor and **no** deduction guide (as UE's `TArray`, `TDeque`, `TSet` before 5.5): cl.exe deduces `C(range)` and `C(it, it)` through it, as `C{...}` | `Containers/Array.h`, `Deque.h`, `Set.h` | `ranges::to`'s `detail::deduction_constructs` under MSVC |
+| `TArray`'s explicit constructor template from a `TArrayView` is **unconstrained**: `TArray<TArrayView<T>>`, which cl.exe deduces from a `TArrayView<T>`, is constructible from it | `Containers/Array.h` | `detail::deduction_constructs` rejects the type deduced through braces itself, not only one that does not construct |
 | `TStringView`'s template head is **constrained** (`UE::CCharType`) and only declared by `CoreMinimal.h` | `Containers/ContainersFwd.h`, `StringView.h` | the unconstrained `range_traits_impl<TStringView<C>>` partial specialization |
 | `CoreMinimal.h` only forward-declares `TSortedMap`/`TSortedSet`/`TCompactSet`/`TStridedView`/`FAnsiString`/`FUtf8String` and does **not** declare `TDeque`, `TStaticArray`, `TIndirectArray`, `TChunkedArray`, `TRingBuffer` or the linked lists | `CoreMinimal.h`, `Containers/ContainersFwd.h` | `ue_range_traits.h` forward-declares them |
 
 Deliberately stricter than UE: the `TDeque` iterator (UE's is default-constructible and
 assignable), and the `!=`-only iterators of `TSet`/`TMap`, `TSparseArray`, `TBitArray` and the
 linked lists, which have `==` in UE (some from before 5.3), so the `!=` path stays tested in
-every version.
+every version; and `TSparseSet`/`TCompactSet`, which have no deduction guide here (UE 5.7
+gives them `TSet`'s).
 
 Not faked: `TList` and `TCircularBuffer`. Neither has `begin`/`end`, so neither is a range
 ([range.range]); `ue_range_traits.h` gives them no trait.
@@ -63,6 +67,7 @@ one version and works unchanged in the other needs no gate.
 | From | Change | Where |
 |---|---|---|
 | 5.4 | `TBitArray` has `begin`/`end` (a range) | `Containers/BitArray.h` |
+| 5.5 | `TSet` has a deduction guide from a range with `ElementType` | `Containers/Set.h` |
 | 5.7 | `TCheckedPointerIterator` has `==` and `operator->` | `Containers/Array.h` |
 | 5.8 | `TCheckedPointerIterator` is default-constructible and assignable, with postfix `++`/`--`, arithmetic, `-`, `[]` and `<`, and still no `value_type`: a `std::input_or_output_iterator` that is not `std::indirectly_readable` (`std::iterator_traits` gives it `output_iterator_tag`) | `Containers/Array.h` |
 

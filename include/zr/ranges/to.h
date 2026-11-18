@@ -6,6 +6,7 @@
 #include "zr/ranges/range_access.h"
 #include "zr/ranges/range_adaptor.h"
 #include "zr/ranges/range_concepts.h"
+#include "zr/ranges/range_traits.h"
 #include "zr/ranges/view_interface.h"
 #include "zr/ranges/views/all.h"
 #include "zr/ranges/views/transform_view.h"
@@ -237,14 +238,44 @@ template <class R> struct to_input_iterator {
     bool operator==(const to_input_iterator&) const;
 };
 
+// MSVC (cl.exe, through 19.44) deduces C(a...) as C{a...} when C declares no deduction guide:
+// through an initializer_list constructor (TArray's), to C<decay_t<A>>: C<R> from a range,
+// C<input-iterator> from an iterator pair. Not constructible from a... as a rule, but
+// TArray<TArrayView<T>> is from a TArrayView<T> (TArray's constructor template takes any
+// TArrayView): the type itself is rejected too.
+#if defined(_MSC_VER) && !defined(__clang__)
+template <template <class...> class C, class D, class A>
+concept deduced_through_braces = requires { typename C<std::decay_t<A>>; } && std::same_as<D, C<std::decay_t<A>>>;
+template <template <class...> class C, class D, class A, class... Rest>
+concept deduction_constructs = std::constructible_from<D, A, Rest...> && !deduced_through_braces<C, D, A>;
+#else
+template <template <class...> class C, class D, class A, class... Rest>
+concept deduction_constructs = true;
+#endif
+
 template <template <class...> class C, class R, class... Args>
-concept deduce_from_range = requires { C(std::declval<R>(), std::declval<Args>()...); };
+concept deduce_from_range = requires { C(std::declval<R>(), std::declval<Args>()...); } &&
+                            deduction_constructs<C, decltype(C(std::declval<R>(), std::declval<Args>()...)), R, Args...>;
 #if defined(__cpp_lib_containers_ranges)
 template <template <class...> class C, class R, class... Args>
 concept deduce_from_range_t = requires { C(std::from_range, std::declval<R>(), std::declval<Args>()...); };
 #endif
 template <template <class...> class C, class R, class... Args>
-concept deduce_from_iterators = requires { C(std::declval<to_input_iterator<R>>(), std::declval<to_input_iterator<R>>(), std::declval<Args>()...); };
+concept deduce_from_iterators =
+    requires { C(std::declval<to_input_iterator<R>>(), std::declval<to_input_iterator<R>>(), std::declval<Args>()...); } &&
+    deduction_constructs<C, decltype(C(std::declval<to_input_iterator<R>>(), std::declval<to_input_iterator<R>>(), std::declval<Args>()...)),
+                         to_input_iterator<R>, to_input_iterator<R>, Args...>;
+
+// DEVIATION: a fallback after the three bullets of DEDUCE_EXPR, for a container that opts in
+// (range_traits.h) and no Args. Unreal containers declare neither the constructors nor the
+// deduction guides the bullets read: C<range_value_t<R>>, or C<K, M> from the cv-unqualified
+// element types of a pair-like value type (std::map's pair<const K, M> gives C<K, M>).
+template <class P, std::size_t I> using pair_part_t = std::remove_cvref_t<std::tuple_element_t<I, std::remove_cvref_t<P>>>;
+template <template <class...> class C, class V>
+concept fallback_by_value = requires { typename C<V>; } && deduce_from_value<C<V>>;
+template <template <class...> class C, class V>
+concept fallback_by_key_mapped = pair_like<V> && requires { typename C<pair_part_t<V, 0>, pair_part_t<V, 1>>; } &&
+                                 deduce_from_key_mapped<C<pair_part_t<V, 0>, pair_part_t<V, 1>>>;
 
 // [range.utility.conv.to] DEDUCE_EXPR
 template <template <class...> class C, class R, class... Args> auto deduce_to() {
@@ -259,6 +290,10 @@ template <template <class...> class C, class R, class... Args> auto deduce_to() 
     else if constexpr (deduce_from_iterators<C, R, Args...>) {
         return std::type_identity<
             decltype(C(std::declval<to_input_iterator<R>>(), std::declval<to_input_iterator<R>>(), std::declval<Args>()...))>{};
+    } else if constexpr (sizeof...(Args) == 0 && fallback_by_value<C, range_value_t<R>>) {
+        return std::type_identity<C<range_value_t<R>>>{};
+    } else if constexpr (sizeof...(Args) == 0 && fallback_by_key_mapped<C, range_value_t<R>>) {
+        return std::type_identity<C<pair_part_t<range_value_t<R>, 0>, pair_part_t<range_value_t<R>, 1>>>{};
     }
 }
 

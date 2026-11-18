@@ -15,6 +15,7 @@
 #include "Containers/Utf8String.h"
 
 #include "zr/ranges/range_concepts.h"
+#include "zr/ranges/to.h"
 #include "zr/ranges/views/enumerate_view.h"
 #include "zr/ranges/views/filter_view.h"
 #include "zr/ranges/views/maybe_view.h"
@@ -27,6 +28,7 @@
 #include <cstddef>
 #include <functional>
 #include <iterator>
+#include <map>
 #include <memory>
 #include <optional>
 #include <type_traits>
@@ -198,4 +200,49 @@ static_assert(!reversible<decltype(std::declval<TDeque<int>&>() | views::filter(
 using zip_arrays = zip_view<views::all_t<TArray<int>&>, views::all_t<TArray<int>&>>;
 static_assert(common_range<zip_arrays> && random_access_range<zip_arrays> && sized_range<zip_arrays>);
 static_assert(detail::index_iterable<TDeque<int>> && detail::index_iterable<TRingBuffer<int>> && detail::index_iterable<TChunkedArray<int>>);
+
+// ranges::to<C>(): the Unreal templates that opt in deduce from the value type...
+template <template <class...> class C, class R, class... Args> using deduced_to = typename decltype(detail::deduce_to<C, R, Args...>())::type;
+using std_ints = std::vector<int>&;
+static_assert(std::is_same_v<deduced_to<TArray, std_ints>, TArray<int>>);
+static_assert(std::is_same_v<deduced_to<TArray64, std_ints>, TArray<int, FDefaultAllocator64>>); // an alias template
+static_assert(std::is_same_v<deduced_to<TSet, std_ints>, TSet<int>>);
+static_assert(std::is_same_v<deduced_to<TSparseSet, std_ints>, TSparseSet<int>>);
+static_assert(std::is_same_v<deduced_to<TCompactSet, std_ints>, TCompactSet<int>>);
+static_assert(std::is_same_v<deduced_to<TSortedSet, std_ints>, TSortedSet<int>>);
+static_assert(std::is_same_v<deduced_to<TDeque, std_ints>, TDeque<int>>);
+static_assert(std::is_same_v<deduced_to<TRingBuffer, std_ints>, TRingBuffer<int>>);
+static_assert(std::is_same_v<deduced_to<TSparseArray, std_ints>, TSparseArray<int>>);
+static_assert(std::is_same_v<deduced_to<TArray, filter_view<views::all_t<TSet<int>&>, bool (*)(int)>>, TArray<int>>);
+#if ZR_FAKE_UE_VERSION >= 504 // TBitArray is a range from UE 5.4
+static_assert(std::is_same_v<deduced_to<TArray, TBitArray<>&>, TArray<bool>>);
+#endif
+// ...or from the key and mapped types of a pair-like one (std::pair, TPair, a zip element),
+// cv-unqualified; a sequence keeps the pair.
+using std_pairs = std::map<int, long>&;
+static_assert(std::is_same_v<deduced_to<TMap, std_pairs>, TMap<int, long>>);
+static_assert(std::is_same_v<deduced_to<TMultiMap, std_pairs>, TMultiMap<int, long>>);
+static_assert(std::is_same_v<deduced_to<TSparseMap, std_pairs>, TSparseMap<int, long>>);
+static_assert(std::is_same_v<deduced_to<TCompactMap, std_pairs>, TCompactMap<int, long>>);
+static_assert(std::is_same_v<deduced_to<TSparseMultiMap, std_pairs>, TSparseMultiMap<int, long>>);
+static_assert(std::is_same_v<deduced_to<TCompactMultiMap, std_pairs>, TCompactMultiMap<int, long>>);
+static_assert(std::is_same_v<deduced_to<TSortedMap, std_pairs>, TSortedMap<int, long>>);
+static_assert(std::is_same_v<deduced_to<TSortedMap, TMap<int, long>&>, TSortedMap<int, long>>);
+static_assert(std::is_same_v<deduced_to<TMap, zip_view<views::all_t<TArray<int>&>, views::all_t<std::vector<long>&>>>, TMap<int, long>>);
+static_assert(std::is_same_v<deduced_to<TArray, std_pairs>, TArray<std::pair<const int, long>>>);
+static_assert(!detail::deducible_to<TMap, std_ints>);
+// The bullets of DEDUCE_EXPR come first: a copy keeps the allocator, the set's guide (UE 5.5)
+// and the fallback give one type. No fallback with constructor arguments.
+static_assert(std::is_same_v<deduced_to<TArray, TArray64<int>&>, TArray64<int>>);
+static_assert(std::is_same_v<deduced_to<TSet, TArray<int>&>, TSet<int>>);
+static_assert(!detail::deducible_to<TArray, std_ints, int>);
+// TArray is constructible from any TArrayView: so is the TArray<TArrayView<int>> cl.exe deduces
+// through the initializer_list constructor.
+static_assert(std::is_same_v<deduced_to<TArray, TArrayView<int>&>, TArray<int>>);
+static_assert(std::is_same_v<deduced_to<TArray, TConstArrayView<int>>, TArray<int>>);
+// Not opted in: views, TIndirectArray (owns pointers), TDoubleLinkedList (no Add), TBitArray
+// (its only parameter is the allocator).
+static_assert(!detail::deducible_to<TArrayView, std_ints> && !detail::deducible_to<TStridedView, std_ints>);
+static_assert(!detail::deducible_to<TIndirectArray, std_ints> && !detail::deducible_to<TDoubleLinkedList, std_ints>);
+static_assert(!detail::deducible_to<TBitArray, std::vector<bool>&>);
 } // namespace

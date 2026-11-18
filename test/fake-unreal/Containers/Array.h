@@ -5,6 +5,7 @@
 #include "Containers/ContainersFwd.h"
 
 #include <algorithm>
+#include <concepts>
 #include <cstddef>
 #include <initializer_list>
 #include <memory>
@@ -149,6 +150,14 @@ public:
         }
     }
 
+    // Unconstrained, as UE's: is_constructible holds from any TArrayView, whatever its element.
+    template <class OtherElementType, class OtherSizeType> explicit TArray(const TArrayView<OtherElementType, OtherSizeType>& other) {
+        Reserve(static_cast<int32>(other.Num()));
+        for (const OtherElementType& element : other) {
+            Add(ElementType(element));
+        }
+    }
+
     TArray(const TArray& other) {
         Reserve(other.num_);
         for (int32 i = 0; i < other.num_; ++i) {
@@ -237,6 +246,16 @@ public:
     TArrayView(ElementType* data, SizeType count)
         : data_(data)
         , num_(count) {}
+
+    // Implicit, from a contiguous Unreal container of a compatible element type, as UE's.
+    template <class OtherRangeType>
+        requires requires(OtherRangeType& other) {
+            { other.GetData() } -> std::convertible_to<ElementType*>;
+            { other.Num() } -> std::convertible_to<SizeType>;
+        }
+    TArrayView(OtherRangeType&& other)
+        : data_(other.GetData())
+        , num_(static_cast<SizeType>(other.Num())) {}
 
     SizeType Num() const { return num_; }
     ElementType* GetData() const { return data_; }

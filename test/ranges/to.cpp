@@ -16,6 +16,7 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -174,6 +175,73 @@ TEST(RangesTo, MapsFromPairLikeElements) {
     // Pair-like elements into a sequence stay whole: TArray has no Add(Key, Value).
     TArray<TPair<int, int>> flat = zr::ranges::to<TArray<TPair<int, int>>>(source);
     EXPECT_EQ(flat.Num(), 3);
+}
+
+// The fallback of DEDUCE_EXPR: an Unreal template has no constructor or guide to deduce from.
+TEST(RangesTo, UnrealTemplateDeducesFromTheValueType) {
+    std::vector<int> v{3, 1, 3};
+    auto array = v | zr::ranges::to<TArray>();
+    static_assert(std::is_same_v<decltype(array), TArray<int>>);
+    ASSERT_EQ(array.Num(), 3);
+    EXPECT_EQ(array[1], 1);
+
+    auto set = zr::ranges::to<TSet>(v);
+    static_assert(std::is_same_v<decltype(set), TSet<int>>);
+    EXPECT_EQ(set.Num(), 2);
+
+    auto deque = v | views::transform(doubler) | zr::ranges::to<TDeque>();
+    static_assert(std::is_same_v<decltype(deque), TDeque<int>>);
+    ASSERT_EQ(deque.Num(), 3);
+    EXPECT_EQ(deque[0], 6);
+
+    auto wide = v | zr::ranges::to<TArray64>(); // an alias template
+    static_assert(std::is_same_v<decltype(wide), TArray<int, FDefaultAllocator64>>);
+    EXPECT_EQ(wide.Num(), 3);
+}
+
+TEST(RangesTo, UnrealMapTemplateDeducesFromAPairLikeValueType) {
+    TArray<int> ks{2, 1};
+    std::vector<long> vs{200, 100};
+    auto zipped = views::zip(ks, vs) | zr::ranges::to<TMap>();
+    static_assert(std::is_same_v<decltype(zipped), TMap<int, long>>);
+    EXPECT_EQ(zipped.Num(), 2);
+
+    // std::map's value type is pair<const K, M>: the key is cv-unqualified.
+    auto sorted = std::map<int, long>{{2, 20}, {1, 10}} | zr::ranges::to<TSortedMap>();
+    static_assert(std::is_same_v<decltype(sorted), TSortedMap<int, long>>);
+    ASSERT_EQ(sorted.Num(), 2);
+    EXPECT_EQ((*sorted.begin()).Value, 10);
+
+    auto multi = zipped | zr::ranges::to<TMultiMap>(); // TPair
+    static_assert(std::is_same_v<decltype(multi), TMultiMap<int, long>>);
+    EXPECT_EQ(multi.Num(), 2);
+
+    // Into a sequence the pair stays whole, as into std::vector.
+    auto flat = std::vector<std::pair<int, long>>{{1, 10}} | zr::ranges::to<TArray>();
+    static_assert(std::is_same_v<decltype(flat), TArray<std::pair<int, long>>>);
+    EXPECT_EQ(flat[0].second, 10);
+}
+
+// From a TArray the set deduces through Epic's guide (UE 5.5) or the fallback: the same type.
+TEST(RangesTo, UnrealSetFromAnUnrealArrayInEveryEngineVersion) {
+    TArray<int> src{4, 5, 4};
+    auto set = src | zr::ranges::to<TSet>();
+    static_assert(std::is_same_v<decltype(set), TSet<int>>);
+    EXPECT_EQ(set.Num(), 2);
+}
+
+// TArray is constructible from any TArrayView, the TArray<TArrayView<int>> cl.exe deduces included.
+TEST(RangesTo, UnrealArrayTemplateFromAnArrayView) {
+    TArray<int> src{4, 5, 6};
+    TArrayView<int> ints(src);
+    auto array = ints | zr::ranges::to<TArray>();
+    static_assert(std::is_same_v<decltype(array), TArray<int>>);
+    ASSERT_EQ(array.Num(), 3);
+    EXPECT_EQ(array[2], 6);
+
+    auto set = TConstArrayView<int>(src) | zr::ranges::to<TSet>();
+    static_assert(std::is_same_v<decltype(set), TSet<int>>);
+    EXPECT_EQ(set.Num(), 3);
 }
 
 TEST(RangesTo, StringsByAppendChar) {

@@ -16,8 +16,8 @@
 /**
  * @file ue_range_traits.h
  *
- * @brief range_traits of the Unreal Engine containers. No Epic source: template names and
- *        heads only.
+ * @brief range_traits of the Unreal Engine containers, and the templates ranges::to deduces.
+ *        No Epic source: template names and heads only.
  *
  * Include after "CoreMinimal.h" (or the test fakes); includes no Unreal header. Containers
  * CoreMinimal.h may not declare are forward-declared with UE 5.7's template heads and must be
@@ -258,5 +258,31 @@ template <class Node>
 struct range_traits_impl<Node> {
     static constexpr range_category category = range_category::forward;
 };
+
+namespace detail {
+
+// ranges::to<C>() without template arguments (to.h): no Unreal container has a constructor
+// from_range or from an iterator pair, and only the sets a deduction guide from a range (UE
+// 5.5, from a contiguous Unreal container only). Not the views (TArrayView, TStridedView),
+// TIndirectArray (owns pointers), TDoubleLinkedList (no Add) and TBitArray (its only
+// parameter is the allocator).
+template <class T, class A> inline constexpr bool deduce_from_value<TArray<T, A>> = true;
+template <class T, class K, class A> inline constexpr bool deduce_from_value<TSet<T, K, A>> = true;
+template <class T, class K, class A> inline constexpr bool deduce_from_value<TSparseSet<T, K, A>> = true;
+template <class T, class K, class A> inline constexpr bool deduce_from_value<TCompactSet<T, K, A>> = true;
+template <class T, class A, class S> inline constexpr bool deduce_from_value<TSortedSet<T, A, S>> = true;
+template <class T, class A> inline constexpr bool deduce_from_value<TDeque<T, A>> = true;
+template <class T, class A> inline constexpr bool deduce_from_value<TRingBuffer<T, A>> = true;
+template <class T, class A> inline constexpr bool deduce_from_value<TSparseArray<T, A>> = true;
+
+template <class K, class V, class A, class F> inline constexpr bool deduce_from_key_mapped<TMap<K, V, A, F>> = true;
+template <class K, class V, class A, class F> inline constexpr bool deduce_from_key_mapped<TMultiMap<K, V, A, F>> = true;
+template <class K, class V, class A, class F> inline constexpr bool deduce_from_key_mapped<TSparseMap<K, V, A, F>> = true;
+template <class K, class V, class A, class F> inline constexpr bool deduce_from_key_mapped<TCompactMap<K, V, A, F>> = true;
+template <class K, class V, class A, class F> inline constexpr bool deduce_from_key_mapped<TSparseMultiMap<K, V, A, F>> = true;
+template <class K, class V, class A, class F> inline constexpr bool deduce_from_key_mapped<TCompactMultiMap<K, V, A, F>> = true;
+template <class K, class V, class A, class S> inline constexpr bool deduce_from_key_mapped<TSortedMap<K, V, A, S>> = true;
+
+} // namespace detail
 
 ZR_END_NAMESPACE_RANGES
