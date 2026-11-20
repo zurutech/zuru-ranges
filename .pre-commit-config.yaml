@@ -62,3 +62,13 @@ repos:
           - "-d=\
             {extends: default, rules: {line-length: {max: 120}, \
             document-start: disable, truthy: {check-keys: false}}}"
+
+  # \r?: pygrep reads bytes, and a checkout with core.autocrlf has CRLF files.
+  - repo: local
+    hooks:
+      - id: spdx-header
+        name: SPDX license header
+        language: pygrep
+        entry: '\A(//[^\n]*\n)*// SPDX-License-Identifier: Apache-2\.0\r?\n'
+        args: [--negate, --multiline]
+        files: '^(include|modules)/'
