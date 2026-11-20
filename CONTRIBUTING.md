@@ -90,8 +90,9 @@ messages are discarded.
 - Everything is `constexpr` that the draft makes `constexpr`, and it is checked in
   `test/compile/constexpr_checks.cpp`.
 - Match the surrounding code. There is no clang-format on purpose; `pre-commit` covers
-  whitespace, YAML, CMake and shell lint. Comments say what is not obvious from the code, not
-  what the code does.
+  whitespace, YAML, CMake and shell lint, and checks the `SPDX-License-Identifier` line of
+  the files under `include/` and `modules/`. Comments say what is not obvious from the code,
+  not what the code does.
 - No Epic Games source anywhere, not even in the fakes: the licensing boundary in the README
   is what lets this repository be public. Unreal behaviour is mirrored in `test/fake-unreal/`
   with original code.
