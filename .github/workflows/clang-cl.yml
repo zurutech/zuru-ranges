@@ -39,7 +39,7 @@ jobs:
           - {os: windows-2022, toolset: '14.34', component: VC.14.34.17.4, llvm: '15.0.7'}
           - {os: windows-2022, toolset: '14.38', component: VC.14.38.17.8, llvm: '16.0.6'}
           - {os: windows-2022, toolset: '14.38', component: VC.14.38.17.8, llvm: '18.1.8'}
-          # newest: the image's LLVM on its newest STL
+          # newest: Chocolatey's LLVM on the image's newest STL
           - {os: windows-2025-vs2026}
     steps:
       - uses: actions/checkout@v4
@@ -56,6 +56,9 @@ jobs:
             "--quiet", "--norestart", "--nocache"
       - if: matrix.target.llvm
         run: choco install llvm --version=${{ matrix.target.llvm }} --allow-downgrade -y --no-progress
+      # The image's LLVM can trail its STL: the 14.52 STL rejects the image's Clang 20 (STL1000).
+      - if: ${{ !matrix.target.llvm }}
+        run: choco upgrade llvm -y --no-progress
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           toolset: ${{ matrix.target.toolset }}

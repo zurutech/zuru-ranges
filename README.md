@@ -374,7 +374,8 @@ C++20, and a standard library with `<ranges>`.
 
 The floor of each family is the oldest version that needs no workaround of substance. CI
 builds every GCC and Linux Clang major between the floor and the newest; of MSVC and clang-cl
-the floor, the versions UE requires and the newest the runner image ships; of Apple Clang
+the floor, the versions UE requires and the newest (MSVC: the one the runner image ships;
+clang-cl: Chocolatey's LLVM on the image's newest STL); of Apple Clang
 Xcode 16.4 and the newest (CI also runs weekly, so the floating versions are rebuilt without a
 push). All with
 warnings as errors, in strict `-std=c++20` as UBT compiles (not `gnu++20`), each test in the
